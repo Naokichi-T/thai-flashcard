@@ -84,6 +84,46 @@
   });
 
   // ============================================================
+  // 「知ってる」「知らない」の管理
+  // ============================================================
+
+  // 各単語の状態を記録するオブジェクト
+  // キー：No.（単語番号）、値：'known'（知ってる）か 'unknown'（知らない）
+  // 例：{ '1': 'known', '4': 'unknown' }
+  let statuses = $state({});
+
+  // ページ読み込み時に LocalStorage から復元する
+  // （onMount の中に追記してもいいが、別で書いた方がわかりやすい）
+  onMount(() => {
+    const saved = localStorage.getItem("flashcard-statuses");
+    if (saved) {
+      statuses = JSON.parse(saved);
+    }
+  });
+
+  // statuses が変わるたびに LocalStorage に保存する
+  $effect(() => {
+    localStorage.setItem("flashcard-statuses", JSON.stringify(statuses));
+  });
+
+  // 「知ってる」ボタンを押したとき
+  function markKnown() {
+    // 今の単語の No. をキーにして 'known' を記録
+    statuses = { ...statuses, [currentWord.no]: "known" };
+    // 次の単語へ自動で進む
+    nextWord();
+  }
+
+  // 「知らない」ボタンを押したとき
+  function markUnknown() {
+    statuses = { ...statuses, [currentWord.no]: "unknown" };
+    nextWord();
+  }
+
+  // 今の単語の状態（'known' / 'unknown' / undefined）
+  let currentStatus = $derived(statuses[currentWord?.no]);
+
+  // ============================================================
   // ボタンの処理
   // ============================================================
 
@@ -91,18 +131,39 @@
     showMeaning = !showMeaning;
   }
 
+  // ============================================================
+  // 復習モードの管理
+  // ============================================================
+
+  // 表示モード： 'all'（全部）か 'unknown'（知らない単語のみ）
+  let mode = $state("all");
+
+  // 表示対象の単語リスト（モードによって変わる）
+  let filteredWords = $derived(mode === "unknown" ? words.filter((w) => statuses[w.no] === "unknown") : words);
+
+  // filteredWords の中での現在位置
+  let filteredIndex = $state(0);
+
+  // モードが切り替わったらインデックスをリセット
+  $effect(() => {
+    mode; // mode を参照することで、変化を検知する
+    filteredIndex = 0;
+    showMeaning = false;
+  });
+
+  // 今表示している単語（filteredWords ベース）
+  let currentWord = $derived(filteredWords[filteredIndex]);
+
+  // 次へ・前へも filteredWords ベースに変更
   function nextWord() {
     showMeaning = false;
-    currentIndex = (currentIndex + 1) % words.length;
+    filteredIndex = (filteredIndex + 1) % filteredWords.length;
   }
 
   function prevWord() {
     showMeaning = false;
-    currentIndex = (currentIndex - 1 + words.length) % words.length;
+    filteredIndex = (filteredIndex - 1 + filteredWords.length) % filteredWords.length;
   }
-
-  // 今表示している単語
-  let currentWord = $derived(words[currentIndex]);
 </script>
 
 {#if loading}
@@ -111,7 +172,26 @@
   <p style="color: red;">エラー: {error}</p>
 {:else if currentWord}
   <div class="card">
+    <!-- モード切り替えボタン -->
+    <div class="mode-switch">
+      <button class:active={mode === "all"} onclick={() => (mode = "all")}>
+        全部（{words.length}）
+      </button>
+      <button class:active={mode === "unknown"} onclick={() => (mode = "unknown")}>
+        知らない（{Object.values(statuses).filter((s) => s === "unknown").length}）
+      </button>
+    </div>
+    <!-- 番号と進捗 -->
     <p class="counter">{currentIndex + 1} / {words.length}</p>
+
+    <!-- 今の単語の状態バッジ -->
+    {#if currentStatus === "known"}
+      <span class="badge known">✅ 知ってる</span>
+    {:else if currentStatus === "unknown"}
+      <span class="badge unknown">❌ 知らない</span>
+    {:else}
+      <span class="badge none">未回答</span>
+    {/if}
 
     <!-- タイ語 -->
     <h1 class="thai">{currentWord.thai}</h1>
@@ -124,6 +204,12 @@
       <button onclick={toggleMeaning}>意味を見る</button>
     {:else}
       <p class="meaning">{currentWord.meaning}</p>
+
+      <!-- 意味が表示されたら「知ってる／知らない」ボタンを出す -->
+      <div class="judge">
+        <button class="known-btn" onclick={markKnown}>😊 知ってる</button>
+        <button class="unknown-btn" onclick={markUnknown}>😓 知らない</button>
+      </div>
     {/if}
 
     <!-- 前へ・次へ -->
@@ -196,5 +282,67 @@
 
   button:hover {
     background: #1a5fbb;
+  }
+
+  /* 状態バッジ */
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+  }
+  .known {
+    background: #d4edda;
+    color: #155724;
+  }
+  .unknown {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  .none {
+    background: #e2e8f0;
+    color: #666;
+  }
+
+  /* 知ってる／知らないボタンエリア */
+  .judge {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  /* 知ってるボタン（緑） */
+  .known-btn {
+    background: #28a745;
+  }
+  .known-btn:hover {
+    background: #1e7e34;
+  }
+
+  /* 知らないボタン（赤） */
+  .unknown-btn {
+    background: #dc3545;
+  }
+  .unknown-btn:hover {
+    background: #bd2130;
+  }
+
+  /* モード切り替えエリア */
+  .mode-switch {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  /* アクティブなボタンを強調 */
+  .mode-switch button {
+    background: #e2e8f0;
+    color: #333;
+  }
+  .mode-switch button.active {
+    background: #2a7ae2;
+    color: white;
   }
 </style>
