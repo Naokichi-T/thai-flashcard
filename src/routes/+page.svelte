@@ -131,16 +131,25 @@
 
   // 「知ってる」ボタンを押したとき
   async function markKnown() {
-    statuses = { ...statuses, [currentWord.no]: "known" };
-    await saveStatus(currentWord.no, "known");
-    nextWord();
+    const wordNo = currentWord.no; // 先に no を保存しておく
+    statuses = { ...statuses, [wordNo]: "known" };
+    await saveStatus(wordNo, "known");
+
+    // 次の単語がある場合だけ進む
+    if (filteredWords.length > 1) {
+      nextWord();
+    }
   }
 
   // 「知らない」ボタンを押したとき
   async function markUnknown() {
-    statuses = { ...statuses, [currentWord.no]: "unknown" };
-    await saveStatus(currentWord.no, "unknown");
-    nextWord();
+    const wordNo = currentWord.no; // 先に no を保存しておく
+    statuses = { ...statuses, [wordNo]: "unknown" };
+    await saveStatus(wordNo, "unknown");
+
+    if (filteredWords.length > 1) {
+      nextWord();
+    }
   }
 
   // 今の単語の状態（'known' / 'unknown' / undefined）
@@ -193,6 +202,13 @@
   <p>読み込み中...</p>
 {:else if error}
   <p style="color: red;">エラー: {error}</p>
+  <!-- 知らない単語が0件のとき -->
+{:else if filteredWords.length === 0}
+  <div class="card">
+    <p style="font-size: 48px;">🎉</p>
+    <p>知らない単語がなくなりました！</p>
+    <button onclick={() => (mode = "all")}>全部を見る</button>
+  </div>
 {:else if currentWord}
   <div class="card">
     <!-- モード切り替えボタン -->
