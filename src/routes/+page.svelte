@@ -170,8 +170,50 @@
   // 表示モード： 'all'（全部）か 'unknown'（知らない単語のみ）
   let mode = $state("all");
 
+  // 今日の日付を「2026-03-20」のような文字列で取得する
+  // 日付が変わると自動的に別のセットになる
+  const todayKey = new Date().toISOString().slice(0, 10);
+
+  // シード値（乱数の種）を作る関数
+  // 同じシード値なら同じ並び順になる → 今日中は同じx個の単語が出る
+  function seededShuffle(array, seed) {
+    const arr = [...array]; // 元の配列を壊さないようにコピー
+    let s = seed;
+    for (let i = arr.length - 1; i > 0; i--) {
+      // シード値をもとに疑似乱数を生成する
+      s = (s * 1664525 + 1013904223) & 0xffffffff;
+      const j = Math.abs(s) % (i + 1);
+      // i番目とj番目を入れ替える
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // 今日の出題数（ここを変えるだけで問題数が変わる）
+  const todayLimit = 10;
+
   // 表示対象の単語リスト（モードによって変わる）
-  let filteredWords = $derived(mode === "unknown" ? words.filter((w) => statuses[w.no] === "unknown") : words);
+  let filteredWords = $derived(
+    (() => {
+      if (mode === "unknown") {
+        // 知らない単語だけ
+        return words.filter((w) => statuses[w.no] === "unknown");
+      } else if (mode === "today") {
+        // 知らない単語からランダムでx個の単語を選ぶ
+        const unknowns = words.filter((w) => statuses[w.no] === "unknown");
+
+        // 今日の日付をシード値（数字）に変換する
+        // 例：'2026-03-20' → 20260320
+        const seed = parseInt(todayKey.replace(/-/g, ""));
+
+        // シャッフルして最初のx個の単語を取る
+        return seededShuffle(unknowns, seed).slice(0, todayLimit);
+      } else {
+        // 全部
+        return words;
+      }
+    })(),
+  );
 
   // filteredWords の中での現在位置
   let filteredIndex = $state(0);
@@ -219,6 +261,7 @@
       <button class:active={mode === "unknown"} onclick={() => (mode = "unknown")}>
         知らない（{Object.values(statuses).filter((s) => s === "unknown").length}）
       </button>
+      <button class:active={mode === "today"} onclick={() => (mode = "today")}> 今日の{todayLimit}問 </button>
     </div>
     <!-- 番号と進捗 -->
     <p class="counter">{currentIndex + 1} / {words.length}</p>
