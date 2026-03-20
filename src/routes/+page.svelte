@@ -5,6 +5,7 @@
 
   // onMount：ページが表示されたタイミングで処理を実行するための関数
   import { onMount } from "svelte";
+  import { supabase } from "$lib/supabase.js";
 
   // --- 状態変数 ---
   let words = $state([]);
@@ -88,35 +89,57 @@
   // ============================================================
 
   // 各単語の状態を記録するオブジェクト
-  // キー：No.（単語番号）、値：'known'（知ってる）か 'unknown'（知らない）
-  // 例：{ '1': 'known', '4': 'unknown' }
+  // キー：word_no、値：'known' か 'unknown'
   let statuses = $state({});
 
-  // ページ読み込み時に LocalStorage から復元する
-  // （onMount の中に追記してもいいが、別で書いた方がわかりやすい）
-  onMount(() => {
-    const saved = localStorage.getItem("flashcard-statuses");
-    if (saved) {
-      statuses = JSON.parse(saved);
+  // ============================================================
+  // Supabase から学習進捗を読み込む
+  // ============================================================
+  onMount(async () => {
+    const { data, error } = await supabase
+      .from("word_status") // テーブル名
+      .select("word_no, status"); // 取得する列
+
+    if (error) {
+      console.error("進捗の読み込みに失敗:", error.message);
+      return;
     }
+
+    // 配列をオブジェクトに変換する
+    // 例： [{ word_no: '1', status: 'known' }]
+    //   → { '1': 'known' }
+    const loaded = {};
+    for (const row of data) {
+      loaded[row.word_no] = row.status;
+    }
+    statuses = loaded;
   });
 
-  // statuses が変わるたびに LocalStorage に保存する
-  $effect(() => {
-    localStorage.setItem("flashcard-statuses", JSON.stringify(statuses));
-  });
+  // ============================================================
+  // Supabase に学習進捗を保存する
+  // ============================================================
+  async function saveStatus(wordNo, status) {
+    const { error } = await supabase.from("word_status").upsert(
+      { word_no: wordNo, status: status, updated_at: new Date().toISOString() },
+      { onConflict: "word_no" }, // 同じ word_no があれば上書き
+    );
+
+    if (error) {
+      console.error("進捗の保存に失敗:", error.message);
+    }
+  }
 
   // 「知ってる」ボタンを押したとき
-  function markKnown() {
-    // 今の単語の No. をキーにして 'known' を記録
+  async function markKnown() {
     statuses = { ...statuses, [currentWord.no]: "known" };
-    // 次の単語へ自動で進む
+    await saveStatus(currentWord.no, "known");
     nextWord();
   }
 
   // 「知らない」ボタンを押したとき
-  function markUnknown() {
+  async function markUnknown() {
     statuses = { ...statuses, [currentWord.no]: "unknown" };
+    await saveStatus(currentWord.no, "unknown");
     nextWord();
   }
 
