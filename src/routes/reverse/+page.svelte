@@ -128,6 +128,8 @@
         return words.filter((w) => statuses[w.no]?.status === "unknown");
       } else if (mode === "favorite") {
         return words.filter((w) => statuses[w.no]?.isFavorite);
+      } else if (mode === "unanswered") {
+        return words.filter((w) => !statuses[w.no]?.status);
       }
       return words;
     })(),
@@ -234,6 +236,9 @@
     <div class="mode-switch">
       <button class:active={mode === "all"} onclick={() => (mode = "all")}>
         📚 全部<span class="count">{words.length}</span>
+      </button>
+      <button class:active={mode === "unanswered"} onclick={() => (mode = "unanswered")}>
+        ❓ 未回答<span class="count">{words.filter((w) => !statuses[w.no]?.status).length}</span>
       </button>
       <button class:active={mode === "unknown"} onclick={() => (mode = "unknown")}>
         ❌ 知らない<span class="count">{Object.values(statuses).filter((s) => s?.status === "unknown").length}</span>
