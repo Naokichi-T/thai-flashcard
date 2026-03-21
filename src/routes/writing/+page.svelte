@@ -1,7 +1,7 @@
 <script>
   // ============================================================
-  // 日本語→タイ語モード
-  // 「知ってる」単語から出題し、タイ語の読み方を答える
+  // 書き取りモード
+  // 日本語を見てタイ語を入力して正解か確認する
   // ============================================================
 
   import { onMount } from "svelte";
@@ -11,22 +11,22 @@
   let words = $state([]);
   let statuses = $state({});
   let currentIndex = $state(0);
-  let showAnswer = $state(false); // タイ語・読みを表示するかどうか
+  let input = $state(""); // 入力されたタイ語
+  let checked = $state(false); // 答え合わせをしたかどうか
+  let isCorrect = $state(false); // 正解かどうか
   let loading = $state(true);
   let error = $state("");
 
-  // 今日の日付（今日のN問用）
   const todayKey = new Date().toISOString().slice(0, 10);
   const todayLimit = 10;
 
   // ============================================================
-  // CSVを正しくパースする関数（study と同じ）
+  // CSVパース関数（他のページと同じ）
   // ============================================================
   function parseCSVLine(line) {
     const result = [];
     let current = "";
     let inQuotes = false;
-
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
       if (char === '"') {
@@ -43,7 +43,7 @@
   }
 
   // ============================================================
-  // シャッフル関数（study と同じ）
+  // シャッフル関数（他のページと同じ）
   // ============================================================
   function seededShuffle(array, seed) {
     const arr = [...array];
@@ -66,9 +66,8 @@
       if (!response.ok) throw new Error("CSVファイルが見つかりません");
       const text = await response.text();
       const lines = text.trim().split(/\r?\n/);
-      const dataLines = lines.slice(1);
-
-      const allWords = dataLines
+      const allWords = lines
+        .slice(1)
         .map((line) => {
           const cols = parseCSVLine(line);
           if (cols.length < 5) return null;
@@ -82,9 +81,8 @@
         })
         .filter((w) => w !== null && w.thai !== "");
 
-      // Supabaseから進捗読み込み
-      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite").eq("stage", 2); // stage2（日本語→タイ語）のデータだけ取得
-
+      // stage3の進捗を読み込む
+      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite").eq("stage", 3);
       if (sbError) throw new Error(sbError.message);
 
       const loaded = {};
@@ -96,16 +94,15 @@
       }
       statuses = loaded;
 
-      // stage1で「知ってる」になった単語を別途取得する
-      const { data: stage1Data, error: stage1Error } = await supabase.from("word_status").select("word_no").eq("stage", 1).eq("status", "known");
+      // stage2で「知ってる」の単語を出題対象にする
+      const { data: stage2Data, error: stage2Error } = await supabase.from("word_status").select("word_no").eq("stage", 2).eq("status", "known");
+      console.log("stage2Data:", stage2Data); // ← 追加
+      if (stage2Error) throw new Error(stage2Error.message);
 
-      if (stage1Error) throw new Error(stage1Error.message);
-
-      // stage1で「知ってる」の word_no のセットを作る
-      const knownInStage1 = new Set(stage1Data.map((r) => r.word_no));
-
-      // stage1で「知ってる」の単語だけを出題対象にする
-      words = allWords.filter((w) => knownInStage1.has(w.no));
+      const knownInStage2 = new Set(stage2Data.map((r) => r.word_no));
+      console.log("stage2で知ってる単語:", [...knownInStage2]); // ← 追加
+      words = allWords.filter((w) => knownInStage2.has(w.no));
+      console.log("出題対象:", words.length, "件"); // ← 追加
 
       loading = false;
     } catch (e) {
@@ -127,10 +124,10 @@
         return seededShuffle(unknowns, seed).slice(0, todayLimit);
       } else if (mode === "unknown") {
         return words.filter((w) => statuses[w.no]?.status === "unknown");
-      } else if (mode === "favorite") {
-        return words.filter((w) => statuses[w.no]?.isFavorite);
       } else if (mode === "unanswered") {
         return words.filter((w) => !statuses[w.no]?.status);
+      } else if (mode === "favorite") {
+        return words.filter((w) => statuses[w.no]?.isFavorite);
       }
       return words;
     })(),
@@ -141,75 +138,75 @@
   $effect(() => {
     mode;
     filteredIndex = 0;
-    showAnswer = false;
+    resetCard();
   });
 
   let currentWord = $derived(filteredWords[filteredIndex]);
+  let currentStatus = $derived(statuses[currentWord?.no]?.status);
+  let isFavorite = $derived(statuses[currentWord?.no]?.isFavorite ?? false);
 
   // ============================================================
-  // ボタンの処理
+  // カードをリセットする
   // ============================================================
-  function toggleAnswer() {
-    showAnswer = !showAnswer;
+  function resetCard() {
+    input = "";
+    checked = false;
+    isCorrect = false;
   }
 
+  // ============================================================
+  // 答え合わせボタンを押したとき
+  // ============================================================
+  function checkAnswer() {
+    // 入力値と正解を比較（前後のスペースを除去して比較）
+    isCorrect = input.trim() === currentWord.thai.trim();
+    checked = true;
+  }
+
+  // ============================================================
+  // 次へ・前へ
+  // ============================================================
   function nextWord() {
-    showAnswer = false;
+    resetCard();
     filteredIndex = (filteredIndex + 1) % filteredWords.length;
   }
 
   function prevWord() {
-    showAnswer = false;
+    resetCard();
     filteredIndex = (filteredIndex - 1 + filteredWords.length) % filteredWords.length;
   }
 
+  // ============================================================
+  // 知ってる・知らないボタン
+  // ============================================================
   async function saveStatus(wordNo, fields) {
-    const { error: sbError } = await supabase.from("word_status").upsert({ word_no: wordNo, stage: 2, updated_at: new Date().toISOString(), ...fields }, { onConflict: "word_no, stage" });
+    const { error: sbError } = await supabase.from("word_status").upsert({ word_no: wordNo, stage: 3, updated_at: new Date().toISOString(), ...fields }, { onConflict: "word_no, stage" });
     if (sbError) console.error("保存失敗:", sbError.message);
   }
 
-  // 「分かる」「分からない」で知ってる単語から除外・維持
   async function markKnown() {
     const wordNo = currentWord.no;
-    statuses = {
-      ...statuses,
-      [wordNo]: { ...statuses[wordNo], status: "known" },
-    };
+    statuses = { ...statuses, [wordNo]: { ...statuses[wordNo], status: "known" } };
     await saveStatus(wordNo, { status: "known" });
     if (filteredWords.length > 1) nextWord();
   }
 
   async function markUnknown() {
     const wordNo = currentWord.no;
-    // 「知らない」に変更してSupabaseも更新
-    statuses = {
-      ...statuses,
-      [wordNo]: { ...statuses[wordNo], status: "unknown" },
-    };
-    const { error: sbError } = await supabase.from("word_status").upsert({ word_no: wordNo, stage: 2, status: "unknown", updated_at: new Date().toISOString() }, { onConflict: "word_no, stage" });
-    if (sbError) console.error("保存失敗:", sbError.message);
-
-    // リストから除外されるので次へ
+    statuses = { ...statuses, [wordNo]: { ...statuses[wordNo], status: "unknown" } };
+    await saveStatus(wordNo, { status: "unknown" });
     if (filteredWords.length > 1) nextWord();
   }
 
-  // お気に入りを切り替える
+  // ============================================================
+  // お気に入り
+  // ============================================================
   async function toggleFavorite() {
     const wordNo = currentWord.no;
     const newVal = !statuses[wordNo]?.isFavorite;
-    statuses = {
-      ...statuses,
-      [wordNo]: { ...statuses[wordNo], isFavorite: newVal },
-    };
-    const { error: sbError } = await supabase.from("word_status").upsert({ word_no: wordNo, stage: 2, is_favorite: newVal, updated_at: new Date().toISOString() }, { onConflict: "word_no, stage" });
-    if (sbError) console.error("保存失敗:", sbError.message);
+    statuses = { ...statuses, [wordNo]: { ...statuses[wordNo], isFavorite: newVal } };
+    await saveStatus(wordNo, { is_favorite: newVal });
   }
-
-  // 今の単語がお気に入りかどうか
-  let isFavorite = $derived(statuses[currentWord?.no]?.isFavorite ?? false);
-
-  // 今の単語のステータスバッジ用
-  let currentStatus = $derived(statuses[currentWord?.no]?.status);
 </script>
 
 <!-- ============================================================
@@ -221,17 +218,15 @@
 {:else if error}
   <p style="color:red;">エラー: {error}</p>
 {:else if words.length === 0}
-  <!-- 知ってる単語がまだない場合 -->
   <div class="card">
     <p style="font-size: 48px;">📚</p>
-    <p>「知ってる」単語がまだありません。</p>
-    <p style="font-size:13px; color:#999;">まずタイ語→日本語モードで単語を仕分けしてください。</p>
-    <a href="/study" class="back-link">← タイ語→日本語へ</a>
+    <p>「日本語→タイ語」で「知ってる」単語がまだありません。</p>
+    <a href="/reverse" class="back-link">← 日本語→タイ語へ</a>
   </div>
 {:else if filteredWords.length === 0}
   <div class="card">
     <p style="font-size: 48px;">🎉</p>
-    <p>今日の出題が終わりました！</p>
+    <p>該当する単語がありません！</p>
     <button onclick={() => (mode = "all")}>全部を見る</button>
   </div>
 {:else if currentWord}
@@ -278,17 +273,29 @@
     <!-- 日本語（意味）を表示 -->
     <p class="meaning-main">{currentWord.meaning}</p>
 
-    <!-- 答えを見るボタン or タイ語・読み -->
-    {#if !showAnswer}
-      <button onclick={toggleAnswer}>タイ語を見る</button>
+    <!-- 入力エリア（答え合わせ前） -->
+    {#if !checked}
+      <input class="thai-input" type="text" placeholder="タイ語を入力..." bind:value={input} />
+      <button onclick={checkAnswer} disabled={input.trim() === ""}> 答え合わせ </button>
+
+      <!-- 答え合わせ後 -->
     {:else}
-      <h1 class="thai">{currentWord.thai}</h1>
-      <p class="reading">{currentWord.reading}</p>
+      <!-- 正解・不正解の表示 -->
+      <div class="result {isCorrect ? 'correct' : 'incorrect'}">
+        {isCorrect ? "⭕ 正解！" : "❌ 不正解"}
+      </div>
+
+      <!-- 正解と入力の比較 -->
+      <div class="answer-compare">
+        <p>正解：<span class="thai">{currentWord.thai}</span></p>
+        <p>読み：<span class="reading">{currentWord.reading}</span></p>
+        <p>入力：<span class={isCorrect ? "correct-text" : "incorrect-text"}>{input}</span></p>
+      </div>
 
       <!-- gotthaiリンク -->
-      <a class="gotthai-link" href={currentWord.url} target="_blank" rel="noreferrer"> 🔗 ごったいで見る </a>
+      <a class="gotthai-link" href={currentWord.url} target="_blank" rel="noreferrer"> 🔗 gotthaiで見る </a>
 
-      <!-- 分かる／分からないボタン -->
+      <!-- 知ってる・知らないボタン -->
       <div class="judge">
         <button class="known-btn" onclick={markKnown}>😊 知ってる</button>
         <button class="unknown-btn" onclick={markUnknown}>😓 知らない</button>
@@ -354,7 +361,6 @@
     background: #2a7ae2;
     color: white;
   }
-
   .mode-switch button.active .count {
     color: #cce0ff;
   }
@@ -371,76 +377,16 @@
     font-size: 14px;
   }
 
-  /* 意味を大きく表示 */
-  .meaning-main {
-    font-size: 24px;
-    color: #333;
-    margin: 24px 0;
-    min-height: 60px;
-  }
-
-  .thai {
-    font-size: 48px;
-    margin: 16px 0;
-    color: #333;
-  }
-
-  .reading {
-    color: #666;
-    font-size: 18px;
-    margin-bottom: 8px;
-  }
-
-  .gotthai-link {
-    display: block;
-    font-size: 12px;
-    color: #999;
-    text-decoration: none;
-    margin-bottom: 16px;
-  }
-  .gotthai-link:hover {
-    color: #2a7ae2;
-  }
-
-  .judge {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 16px;
-  }
-
-  .nav {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 24px;
-  }
-
-  button {
-    background: #2a7ae2;
-    color: white;
+  .fav-btn {
+    background: none;
     border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 16px;
+    font-size: 24px;
     cursor: pointer;
+    color: #f5a623;
+    padding: 0;
   }
-
-  button:hover {
-    background: #1a5fbb;
-  }
-
-  .known-btn {
-    background: #28a745;
-  }
-  .known-btn:hover {
-    background: #1e7e34;
-  }
-
-  .unknown-btn {
-    background: #dc3545;
-  }
-  .unknown-btn:hover {
-    background: #bd2130;
+  .fav-btn:hover {
+    background: none;
   }
 
   .badge {
@@ -463,32 +409,123 @@
     color: #666;
   }
 
-  .top-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  .fav-btn {
-    background: none;
-    border: none;
+  /* 意味を大きく表示 */
+  .meaning-main {
     font-size: 24px;
-    cursor: pointer;
-    color: #f5a623;
-    padding: 0;
+    color: #333;
+    margin: 16px 0;
+    min-height: 60px;
   }
 
-  .fav-btn:hover {
-    background: none;
+  /* タイ語入力ボックス */
+  .thai-input {
+    width: 100%;
+    font-size: 24px;
+    text-align: center;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+    outline: none;
+  }
+  .thai-input:focus {
+    border-color: #2a7ae2;
   }
 
-  .count {
-    font-size: 11px;
+  /* 正解・不正解の表示 */
+  .result {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 8px 0;
+  }
+  .correct {
+    color: #28a745;
+  }
+  .incorrect {
+    color: #dc3545;
+  }
+
+  /* 正解と入力の比較エリア */
+  .answer-compare {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+    text-align: left;
+    font-size: 14px;
+  }
+  .answer-compare p {
+    margin: 4px 0;
+  }
+
+  .thai {
+    font-size: 20px;
+  }
+  .reading {
     color: #666;
   }
+  .correct-text {
+    color: #28a745;
+    font-weight: bold;
+  }
+  .incorrect-text {
+    font-size: 20px;
+    color: #dc3545;
+    font-weight: bold;
+  }
 
-  .mode-switch button.active .count {
-    color: #cce0ff;
+  .gotthai-link {
+    display: block;
+    font-size: 12px;
+    color: #999;
+    text-decoration: none;
+    margin-bottom: 16px;
+  }
+  .gotthai-link:hover {
+    color: #2a7ae2;
+  }
+
+  .judge {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+  }
+
+  button {
+    background: #2a7ae2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #1a5fbb;
+  }
+  button:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+  }
+
+  .known-btn {
+    background: #28a745;
+  }
+  .known-btn:hover {
+    background: #1e7e34;
+  }
+  .unknown-btn {
+    background: #dc3545;
+  }
+  .unknown-btn:hover {
+    background: #bd2130;
   }
 </style>

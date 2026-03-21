@@ -24,11 +24,11 @@
       <span class="desc">日本語を見てタイ語を答える</span>
     </a>
 
-    <!-- 書き取りモード（後で実装） -->
-    <a class="mode-card disabled">
+    <!-- 書き取りモード -->
+    <a href="/writing" class="mode-card">
       <span class="icon">✏️</span>
       <span class="name">書き取り</span>
-      <span class="desc">近日公開予定</span>
+      <span class="desc">日本語を見て綴りを答える</span>
     </a>
   </div>
 </div>
@@ -88,11 +88,5 @@
   .desc {
     font-size: 13px;
     color: #999;
-  }
-
-  /* 未実装のモード */
-  .disabled {
-    opacity: 0.4;
-    pointer-events: none;
   }
 </style>
