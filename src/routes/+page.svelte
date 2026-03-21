@@ -111,7 +111,11 @@
     //   → { '1': 'known' }
     const loaded = {};
     for (const row of data) {
-      loaded[row.word_no] = row.status;
+      // status と is_favorite を両方保存する
+      loaded[row.word_no] = {
+        status: row.status,
+        isFavorite: row.is_favorite ?? false,
+      };
     }
     statuses = loaded;
   });
@@ -119,22 +123,24 @@
   // ============================================================
   // Supabase に学習進捗を保存する
   // ============================================================
-  async function saveStatus(wordNo, status) {
-    const { error } = await supabase.from("word_status").upsert(
-      { word_no: wordNo, status: status, updated_at: new Date().toISOString() },
-      { onConflict: "word_no" }, // 同じ word_no があれば上書き
-    );
+  async function saveStatus(wordNo, fields) {
+    // fields には { status: '...' } や { is_favorite: true } などを渡す
+    const { error } = await supabase.from("word_status").upsert({ word_no: wordNo, updated_at: new Date().toISOString(), ...fields }, { onConflict: "word_no" });
 
     if (error) {
-      console.error("進捗の保存に失敗:", error.message);
+      console.error("保存に失敗:", error.message);
     }
   }
 
   // 「知ってる」ボタンを押したとき
   async function markKnown() {
     const wordNo = currentWord.no; // 先に no を保存しておく
-    statuses = { ...statuses, [wordNo]: "known" };
-    await saveStatus(wordNo, "known");
+    // 既存のデータを保ちつつ status だけ更新する
+    statuses = {
+      ...statuses,
+      [wordNo]: { ...statuses[wordNo], status: "known" },
+    };
+    await saveStatus(wordNo, { status: "known" });
 
     // 次の単語がある場合だけ進む
     if (filteredWords.length > 1) {
@@ -144,17 +150,32 @@
 
   // 「知らない」ボタンを押したとき
   async function markUnknown() {
-    const wordNo = currentWord.no; // 先に no を保存しておく
-    statuses = { ...statuses, [wordNo]: "unknown" };
-    await saveStatus(wordNo, "unknown");
-
-    if (filteredWords.length > 1) {
-      nextWord();
-    }
+    const wordNo = currentWord.no;
+    statuses = {
+      ...statuses,
+      [wordNo]: { ...statuses[wordNo], status: "unknown" },
+    };
+    await saveStatus(wordNo, { status: "unknown" });
+    if (filteredWords.length > 1) nextWord();
   }
 
-  // 今の単語の状態（'known' / 'unknown' / undefined）
-  let currentStatus = $derived(statuses[currentWord?.no]);
+  // ☆ボタンを押したとき
+  async function toggleFavorite() {
+    const wordNo = currentWord.no;
+    // 今の状態を反転する
+    const newVal = !statuses[wordNo]?.isFavorite;
+    statuses = {
+      ...statuses,
+      [wordNo]: { ...statuses[wordNo], isFavorite: newVal },
+    };
+    await saveStatus(wordNo, { is_favorite: newVal });
+  }
+
+  // 今の単語がお気に入りかどうか
+  let isFavorite = $derived(statuses[currentWord?.no]?.isFavorite ?? false);
+
+  // 今の単語の状態
+  let currentStatus = $derived(statuses[currentWord?.no]?.status);
 
   // ============================================================
   // ボタンの処理
@@ -198,7 +219,7 @@
     (() => {
       if (mode === "unknown") {
         // 知らない単語だけ
-        return words.filter((w) => statuses[w.no] === "unknown");
+        return words.filter((w) => statuses[w.no]?.status === "unknown");
       } else if (mode === "today") {
         // 知らない単語からランダムでx個の単語を選ぶ
         const unknowns = words.filter((w) => statuses[w.no] === "unknown");
@@ -209,6 +230,9 @@
 
         // シャッフルして最初のx個の単語を取る
         return seededShuffle(unknowns, seed).slice(0, todayLimit);
+      } else if (mode === "favorite") {
+        // お気に入りの単語だけ
+        return words.filter((w) => statuses[w.no]?.isFavorite);
       } else {
         // 全部
         return words;
@@ -262,10 +286,19 @@
       <button class:active={mode === "unknown"} onclick={() => (mode = "unknown")}>
         知らない（{Object.values(statuses).filter((s) => s === "unknown").length}）
       </button>
+      <button class:active={mode === "favorite"} onclick={() => (mode = "favorite")}>
+        お気に入り（{Object.values(statuses).filter((s) => s?.isFavorite).length}）
+      </button>
       <button class:active={mode === "today"} onclick={() => (mode = "today")}> 今日の{todayLimit}問 </button>
     </div>
-    <!-- 番号と進捗 -->
-    <p class="counter">{currentIndex + 1} / {words.length}</p>
+    <!-- 番号・進捗・お気に入りボタン -->
+    <div class="top-row">
+      <p class="counter">{filteredIndex + 1} / {filteredWords.length}</p>
+      <!-- ★お気に入りボタン -->
+      <button class="fav-btn" onclick={toggleFavorite}>
+        {isFavorite ? "★" : "☆"}
+      </button>
+    </div>
 
     <!-- 今の単語の状態バッジ -->
     {#if currentStatus === "known"}
@@ -443,5 +476,27 @@
 
   .gotthai-link:hover {
     color: #2a7ae2;
+  }
+
+  /* 番号とお気に入りボタンの行 */
+  .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  /* お気に入りボタン */
+  .fav-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #f5a623;
+    padding: 0;
+  }
+
+  .fav-btn:hover {
+    background: none;
   }
 </style>
