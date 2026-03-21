@@ -15,69 +15,29 @@
   let error = $state("");
 
   // ============================================================
-  // CSV を正しくパース（解析）する関数
-  // ダブルクォートで囲まれたカンマを「列の区切り」と間違えないようにする
-  // ============================================================
-  function parseCSVLine(line) {
-    const result = [];
-    let current = "";
-    let inQuotes = false; // 今ダブルクォートの中にいるかどうか
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        // ダブルクォートが出たら「中にいる/出た」を切り替える
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        // ダブルクォートの外のカンマ → 列の区切り
-        result.push(current.trim());
-        current = "";
-      } else {
-        // それ以外の文字はそのまま追加
-        current += char;
-      }
-    }
-
-    // 最後の列を追加
-    result.push(current.trim());
-    return result;
-  }
-
-  // ============================================================
-  // CSVを読み込む処理
+  // Supabaseから単語データを取得する処理
   // ============================================================
   onMount(async () => {
     try {
-      const response = await fetch("/単語帳.csv");
-      if (!response.ok) throw new Error("CSVファイルが見つかりません");
+      const { data: wordData, error: wordError } = await supabase.from("words").select("no, url, thai, reading, meaning, frequency, formality").order("no", { ascending: true }); // no順に並べる
 
-      const text = await response.text();
+      if (wordError) throw new Error(wordError.message);
+      const allWords = wordData;
+      words = allWords;
 
-      // 改行で分割（\r\n と \n 両方に対応）
-      const lines = text.trim().split(/\r?\n/);
+      // Supabaseから進捗を読み込む
+      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite").eq("stage", 1);
 
-      // 1行目はヘッダーなので2行目以降を使う
-      const dataLines = lines.slice(1);
+      if (sbError) throw new Error(sbError.message);
 
-      words = dataLines
-        .map((line) => {
-          // 自作パース関数で列に分割する
-          const cols = parseCSVLine(line);
-
-          // 列数が足りない行はスキップ
-          if (cols.length < 5) return null;
-
-          return {
-            no: cols[0], // No.
-            url: cols[1], // URL
-            thai: cols[2], // タイ語
-            reading: cols[3], // 読み
-            meaning: cols[4], // 意味（複数のときはカンマ区切りのまま）
-          };
-        })
-        .filter((w) => w !== null && w.thai !== "");
-
+      const loaded = {};
+      for (const row of data) {
+        loaded[row.word_no] = {
+          status: row.status,
+          isFavorite: row.is_favorite ?? false,
+        };
+      }
+      statuses = loaded;
       loading = false;
     } catch (e) {
       error = e.message;

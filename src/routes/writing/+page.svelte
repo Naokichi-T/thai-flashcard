@@ -21,28 +21,6 @@
   const todayLimit = 10;
 
   // ============================================================
-  // CSVパース関数（他のページと同じ）
-  // ============================================================
-  function parseCSVLine(line) {
-    const result = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim());
-    return result;
-  }
-
-  // ============================================================
   // シャッフル関数（他のページと同じ）
   // ============================================================
   function seededShuffle(array, seed) {
@@ -61,25 +39,12 @@
   // ============================================================
   onMount(async () => {
     try {
-      // CSV読み込み
-      const response = await fetch("/単語帳.csv");
-      if (!response.ok) throw new Error("CSVファイルが見つかりません");
-      const text = await response.text();
-      const lines = text.trim().split(/\r?\n/);
-      const allWords = lines
-        .slice(1)
-        .map((line) => {
-          const cols = parseCSVLine(line);
-          if (cols.length < 5) return null;
-          return {
-            no: cols[0],
-            url: cols[1],
-            thai: cols[2],
-            reading: cols[3],
-            meaning: cols[4],
-          };
-        })
-        .filter((w) => w !== null && w.thai !== "");
+      // Supabaseから単語データを取得
+      const { data: wordData, error: wordError } = await supabase.from("words").select("no, url, thai, reading, meaning, frequency, formality").order("no", { ascending: true }); // no順に並べる
+
+      if (wordError) throw new Error(wordError.message);
+      const allWords = wordData;
+      words = allWords;
 
       // stage3の進捗を読み込む
       const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite").eq("stage", 3);
@@ -96,13 +61,10 @@
 
       // stage2で「知ってる」の単語を出題対象にする
       const { data: stage2Data, error: stage2Error } = await supabase.from("word_status").select("word_no").eq("stage", 2).eq("status", "known");
-      console.log("stage2Data:", stage2Data); // ← 追加
       if (stage2Error) throw new Error(stage2Error.message);
 
       const knownInStage2 = new Set(stage2Data.map((r) => r.word_no));
-      console.log("stage2で知ってる単語:", [...knownInStage2]); // ← 追加
       words = allWords.filter((w) => knownInStage2.has(w.no));
-      console.log("出題対象:", words.length, "件"); // ← 追加
 
       loading = false;
     } catch (e) {
