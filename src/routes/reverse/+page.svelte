@@ -122,8 +122,9 @@
   let filteredWords = $derived(
     (() => {
       if (mode === "today") {
+        const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown");
         const seed = parseInt(todayKey.replace(/-/g, ""));
-        return seededShuffle(words, seed).slice(0, todayLimit);
+        return seededShuffle(unknowns, seed).slice(0, todayLimit);
       } else if (mode === "unknown") {
         return words.filter((w) => statuses[w.no]?.status === "unknown");
       } else if (mode === "favorite") {

@@ -219,7 +219,7 @@
         return words.filter((w) => statuses[w.no]?.status === "unknown");
       } else if (mode === "today") {
         // 知らない単語からランダムでx個の単語を選ぶ
-        const unknowns = words.filter((w) => statuses[w.no] === "unknown");
+        const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown");
 
         // 今日の日付をシード値（数字）に変換する
         // 例：'2026-03-20' → 20260320
