@@ -70,6 +70,7 @@
 
           return {
             no: cols[0], // No.
+            url: cols[1], // URL
             thai: cols[2], // タイ語
             reading: cols[3], // 読み
             meaning: cols[4], // 意味（複数のときはカンマ区切りのまま）
@@ -281,6 +282,9 @@
     <!-- 読み -->
     <p class="reading">{currentWord.reading}</p>
 
+    <!-- gotthaiリンク -->
+    <a class="gotthai-link" href={currentWord.url} target="_blank" rel="noreferrer"> 🔗 ごったいで見る </a>
+
     <!-- 意味を見るボタン or 意味 -->
     {#if !showMeaning}
       <button onclick={toggleMeaning}>意味を見る</button>
@@ -426,5 +430,18 @@
   .mode-switch button.active {
     background: #2a7ae2;
     color: white;
+  }
+
+  /* gotthaiリンク */
+  .gotthai-link {
+    display: block;
+    font-size: 12px;
+    color: #999;
+    text-decoration: none;
+    margin-bottom: 16px;
+  }
+
+  .gotthai-link:hover {
+    color: #2a7ae2;
   }
 </style>
