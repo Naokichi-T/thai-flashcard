@@ -34,16 +34,6 @@
 </div>
 
 <style>
-  :global(body) {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-    background: #f0f4f8;
-    font-family: sans-serif;
-  }
-
   .menu {
     text-align: center;
   }

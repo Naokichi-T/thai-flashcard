@@ -97,21 +97,15 @@
   // Supabase から学習進捗を読み込む
   // ============================================================
   onMount(async () => {
-    const { data, error } = await supabase
-      .from("word_status") // テーブル名
-      .select("word_no, status"); // 取得する列
+    const { data, error } = await supabase.from("word_status").select("word_no, status, is_favorite").eq("stage", 1); // stage1（タイ語→日本語）のデータだけ取得
 
     if (error) {
       console.error("進捗の読み込みに失敗:", error.message);
       return;
     }
 
-    // 配列をオブジェクトに変換する
-    // 例： [{ word_no: '1', status: 'known' }]
-    //   → { '1': 'known' }
     const loaded = {};
     for (const row of data) {
-      // status と is_favorite を両方保存する
       loaded[row.word_no] = {
         status: row.status,
         isFavorite: row.is_favorite ?? false,
@@ -125,7 +119,10 @@
   // ============================================================
   async function saveStatus(wordNo, fields) {
     // fields には { status: '...' } や { is_favorite: true } などを渡す
-    const { error } = await supabase.from("word_status").upsert({ word_no: wordNo, updated_at: new Date().toISOString(), ...fields }, { onConflict: "word_no" });
+    const { error } = await supabase.from("word_status").upsert(
+      { word_no: wordNo, stage: 1, updated_at: new Date().toISOString(), ...fields },
+      { onConflict: "word_no, stage" }, // word_no と stage の組み合わせで判断
+    );
 
     if (error) {
       console.error("保存に失敗:", error.message);
@@ -351,16 +348,6 @@
 {/if}
 
 <style>
-  :global(body) {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-    background: #f0f4f8;
-    font-family: sans-serif;
-  }
-
   .card {
     background: white;
     border-radius: 16px;
