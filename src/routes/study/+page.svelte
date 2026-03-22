@@ -123,7 +123,7 @@
   }
 
   // 復習間隔の上限（日数）
-  const MAX_INTERVAL_DAYS = 180; // 6か月
+  const MAX_INTERVAL_DAYS = 365; // 1年
 
   function getNextInterval(count) {
     const base = [1, 3, 7, 14, 30];
