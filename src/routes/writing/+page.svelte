@@ -511,6 +511,7 @@
     flex-direction: column;
     align-items: center;
     gap: 2px;
+    white-space: nowrap !important;
   }
 
   .mode-primary button.active {
