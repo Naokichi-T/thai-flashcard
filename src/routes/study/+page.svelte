@@ -26,7 +26,7 @@
       words = allWords;
 
       // Supabaseから進捗を読み込む
-      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending").eq("stage", 1);
+      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 1);
 
       if (sbError) throw new Error(sbError.message);
 
@@ -36,6 +36,8 @@
           status: row.status,
           isFavorite: row.is_favorite ?? false,
           isPending: row.is_pending ?? false,
+          reviewCount: row.review_count ?? 0,
+          nextReviewAt: row.next_review_at ?? null,
         };
       }
       statuses = loaded;
@@ -58,7 +60,7 @@
   // Supabase から学習進捗を読み込む
   // ============================================================
   onMount(async () => {
-    const { data, error } = await supabase.from("word_status").select("word_no, status, is_favorite").eq("stage", 1); // stage1（タイ語→日本語）のデータだけ取得
+    const { data, error } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 1); // stage1（タイ語→日本語）のデータだけ取得
 
     if (error) {
       console.error("進捗の読み込みに失敗:", error.message);
@@ -90,30 +92,73 @@
     }
   }
 
-  // 「知ってる」ボタンを押したとき
+  // 正解回数に応じた次回出題までの日数
+  function getNextInterval(count) {
+    // 1回目→1日、2回目→3日、3回目→7日、4回目→14日、5回目→30日
+    // 6回目以降は前回の2倍ずつ伸びていく
+    const base = [1, 3, 7, 14, 30];
+    if (count <= base.length) {
+      return base[count - 1];
+    }
+    // 6回目以降：30 * 2^(count-5)
+    return Math.round(30 * Math.pow(2, count - 5));
+  }
+
   async function markKnown() {
-    const wordNo = currentWord.no; // 先に no を保存しておく
-    // 既存のデータを保ちつつ status だけ更新する
+    const wordNo = currentWord.no;
+
+    // 今の正解回数を取得（なければ0）
+    const currentCount = statuses[wordNo]?.reviewCount ?? 0;
+    const newCount = currentCount + 1;
+
+    // 次回出題日を計算する
+    const days = getNextInterval(newCount);
+    const nextReview = new Date();
+    nextReview.setDate(nextReview.getDate() + days); // 今日 + days日後
+
     statuses = {
       ...statuses,
-      [wordNo]: { ...statuses[wordNo], status: "known" },
+      [wordNo]: {
+        ...statuses[wordNo],
+        status: "known",
+        reviewCount: newCount,
+        nextReviewAt: nextReview.toISOString(),
+      },
     };
-    await saveStatus(wordNo, { status: "known" });
 
-    // 次の単語がある場合だけ進む
-    if (filteredWords.length > 1) {
-      nextWord();
-    }
+    await saveStatus(wordNo, {
+      status: "known",
+      review_count: newCount,
+      next_review_at: nextReview.toISOString(),
+    });
+
+    if (filteredWords.length > 1) nextWord();
   }
 
   // 「知らない」ボタンを押したとき
   async function markUnknown() {
     const wordNo = currentWord.no;
+
+    // 明日また出題されるようにリセット
+    const nextReview = new Date();
+    nextReview.setDate(nextReview.getDate() + 1);
+
     statuses = {
       ...statuses,
-      [wordNo]: { ...statuses[wordNo], status: "unknown" },
+      [wordNo]: {
+        ...statuses[wordNo],
+        status: "unknown",
+        reviewCount: 0,
+        nextReviewAt: nextReview.toISOString(),
+      },
     };
-    await saveStatus(wordNo, { status: "unknown" });
+
+    await saveStatus(wordNo, {
+      status: "unknown",
+      review_count: 0,
+      next_review_at: nextReview.toISOString(),
+    });
+
     if (filteredWords.length > 1) nextWord();
   }
 
@@ -210,6 +255,13 @@
       } else if (mode === "pending") {
         // 保留中の単語だけ
         return words.filter((w) => statuses[w.no]?.isPending);
+      } else if (mode === "review") {
+        // next_review_at が今日以前の「知ってる」単語だけ
+        const now = new Date();
+        return words.filter((w) => {
+          const next = statuses[w.no]?.nextReviewAt;
+          return next && new Date(next) <= now;
+        });
       } else {
         // 全部（保留は除外）
         return words.filter((w) => !statuses[w.no]?.isPending);
@@ -257,6 +309,10 @@
       <p style="font-size: 48px;">⭐</p>
       <p>お気に入りの単語はありません</p>
       <button onclick={() => (mode = "all")}>全部を見る</button>
+    {:else if mode === "review"}
+      <p style="font-size: 48px;">🎉</p>
+      <p>今日の復習はありません！</p>
+      <button onclick={() => (mode = "all")}>全部を見る</button>
     {:else}
       <p style="font-size: 48px;">🎉</p>
       <p>該当する単語がありません！</p>
@@ -287,6 +343,14 @@
       </button>
       <button class:active={mode === "pending"} onclick={() => (mode = "pending")}>
         💤 保留<span class="count">{words.filter((w) => statuses[w.no]?.isPending).length}</span>
+      </button>
+      <button class:active={mode === "review"} onclick={() => (mode = "review")}>
+        🔁 復習<span class="count"
+          >{words.filter((w) => {
+            const next = statuses[w.no]?.nextReviewAt;
+            return next && new Date(next) <= new Date();
+          }).length}</span
+        >
       </button>
     </div>
     <!-- 番号・お気に入り・保留ボタン -->
