@@ -16,13 +16,34 @@
   // ============================================================
   // データ読み込み
   // ============================================================
+  // 全件取得する関数（1000件ずつ分割して取得）
+  async function fetchAllWords() {
+    let allWords = [];
+    let from = 0;
+    const batchSize = 1000;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("words")
+        .select("no, url, thai, reading, meaning, frequency, formality")
+        .order("no", { ascending: true })
+        .range(from, from + batchSize - 1);
+
+      if (error) throw new Error(error.message);
+      allWords = [...allWords, ...data];
+
+      if (data.length < batchSize) break; // 取得件数が1000未満なら終了
+      from += batchSize;
+    }
+
+    return allWords;
+  }
+
   onMount(async () => {
     try {
-      // 全単語を取得（頻出度・フォーマル度も含む）
-      const { data: wordData, error: wordError } = await supabase.from("words").select("no, frequency, formality").order("no", { ascending: true });
-
-      if (wordError) throw new Error(wordError.message);
-      words = wordData;
+      // 全単語を取得（1000件ずつ分割）
+      words = await fetchAllWords();
+      console.log("取得件数:", words.length); // 確認用
 
       // stage1の進捗を取得
       const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_pending").eq("stage", 1);

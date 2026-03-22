@@ -38,37 +38,48 @@
   // ============================================================
   // データ読み込み
   // ============================================================
+  // 全件取得する関数（1000件ずつ分割して取得）
+  async function fetchAllWords() {
+    let allWords = [];
+    let from = 0;
+    const batchSize = 1000;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("words")
+        .select("no, url, thai, reading, meaning, frequency, formality")
+        .order("no", { ascending: true })
+        .range(from, from + batchSize - 1);
+
+      if (error) throw new Error(error.message);
+      allWords = [...allWords, ...data];
+
+      if (data.length < batchSize) break; // 取得件数が1000未満なら終了
+      from += batchSize;
+    }
+
+    return allWords;
+  }
+
   onMount(async () => {
     try {
-      // Supabaseから単語データを取得
-      const { data: wordData, error: wordError } = await supabase.from("words").select("no, url, thai, reading, meaning, frequency, formality").order("no", { ascending: true }); // no順に並べる
+      // 全単語を取得（1000件ずつ分割）
+      words = await fetchAllWords();
+      console.log("取得件数:", words.length); // 確認用
 
-      if (wordError) throw new Error(wordError.message);
-      const allWords = wordData;
-      words = allWords;
+      // stage1の進捗を取得
+      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_pending").eq("stage", 1);
 
-      // stage3の進捗を読み込む
-      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 3);
-      if (sbError) throw new Error(sbError.message);
+      if (statusError) throw new Error(statusError.message);
 
       const loaded = {};
-      for (const row of data) {
+      for (const row of statusData) {
         loaded[row.word_no] = {
           status: row.status,
-          isFavorite: row.is_favorite ?? false,
           isPending: row.is_pending ?? false,
-          reviewCount: row.review_count ?? 0,
-          nextReviewAt: row.next_review_at ?? null,
         };
       }
       statuses = loaded;
-
-      // stage2で「知ってる」の単語を出題対象にする
-      const { data: stage2Data, error: stage2Error } = await supabase.from("word_status").select("word_no").eq("stage", 2).eq("status", "known");
-      if (stage2Error) throw new Error(stage2Error.message);
-
-      const knownInStage2 = new Set(stage2Data.map((r) => r.word_no));
-      words = allWords.filter((w) => knownInStage2.has(w.no));
 
       loading = false;
     } catch (e) {
