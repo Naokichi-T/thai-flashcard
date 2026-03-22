@@ -30,6 +30,13 @@
       <span class="name">書き取り</span>
       <span class="desc">日本語を見て綴りを答える</span>
     </a>
+
+    <!-- 保留一覧 -->
+    <a href="/pending" class="mode-card">
+      <span class="icon">💤</span>
+      <span class="name">保留一覧</span>
+      <span class="desc">保留中の単語を確認・解除する</span>
+    </a>
   </div>
 </div>
 
