@@ -1,5 +1,5 @@
 <script>
-  import favicon from "$lib/assets/favicon.ico";
+  import favicon from "$lib/assets/favicon.svg";
   import "../app.css"; // 全ページ共通のスタイル
   import { onMount } from "svelte";
   import { supabase } from "$lib/supabase.js";
