@@ -122,16 +122,19 @@
     }
   }
 
-  // 正解回数に応じた次回出題までの日数
+  // 復習間隔の上限（日数）
+  const MAX_INTERVAL_DAYS = 180; // 6か月
+
   function getNextInterval(count) {
-    // 1回目→1日、2回目→3日、3回目→7日、4回目→14日、5回目→30日
-    // 6回目以降は前回の2倍ずつ伸びていく
     const base = [1, 3, 7, 14, 30];
+    let days;
     if (count <= base.length) {
-      return base[count - 1];
+      days = base[count - 1];
+    } else {
+      days = Math.round(30 * Math.pow(2, count - 5));
     }
-    // 6回目以降：30 * 2^(count-5)
-    return Math.round(30 * Math.pow(2, count - 5));
+    // 上限を超えたらMAX_INTERVAL_DAYSを返す
+    return Math.min(days, MAX_INTERVAL_DAYS);
   }
 
   async function markKnown() {
