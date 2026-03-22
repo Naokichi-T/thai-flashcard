@@ -6,20 +6,19 @@
 </script>
 
 <div class="menu">
-  <h1 class="title">🇹🇭 タイ語単語帳</h1>
-  <p class="subtitle">学習モードを選んでください</p>
-
+  <h1 class="title">タイ語単語帳</h1>
+  <p class="subtitle">メニューを選んでください</p>
   <div class="modes">
     <!-- タイ語→日本語モード -->
     <a href="/study" class="mode-card">
-      <span class="icon">🃏</span>
+      <span class="icon">🇹🇭</span>
       <span class="name">タイ語 → 日本語</span>
       <span class="desc">タイ語を見て意味を答える</span>
     </a>
 
     <!-- 日本語→タイ語モード -->
     <a href="/reverse" class="mode-card">
-      <span class="icon">🔄</span>
+      <span class="icon">🇯🇵</span>
       <span class="name">日本語 → タイ語</span>
       <span class="desc">日本語を見てタイ語を答える</span>
     </a>
