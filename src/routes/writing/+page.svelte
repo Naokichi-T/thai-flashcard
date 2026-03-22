@@ -437,9 +437,7 @@
   .thai {
     font-size: 20px;
   }
-  .reading {
-    color: #666;
-  }
+
   .correct-text {
     font-size: 20px;
     color: #28a745;

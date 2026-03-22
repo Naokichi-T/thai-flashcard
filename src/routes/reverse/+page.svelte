@@ -362,12 +362,6 @@
     color: #333;
   }
 
-  .reading {
-    color: #666;
-    font-size: 18px;
-    margin-bottom: 8px;
-  }
-
   .gotthai-link {
     display: block;
     font-size: 12px;
