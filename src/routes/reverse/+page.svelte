@@ -143,8 +143,26 @@
   }
 
   async function saveStatus(wordNo, fields) {
-    const { error: sbError } = await supabase.from("word_status").upsert({ word_no: wordNo, stage: 2, updated_at: new Date().toISOString(), ...fields }, { onConflict: "word_no, stage" });
-    if (sbError) console.error("保存失敗:", sbError.message);
+    // ログイン中のユーザーIDを取得
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    const { error } = await supabase.from("word_status").upsert(
+      {
+        word_no: wordNo,
+        stage: 2, // reverseは2、writingは3
+        user_id: userId, // ← 追加
+        updated_at: new Date().toISOString(),
+        ...fields,
+      },
+      { onConflict: "word_no, stage, user_id" },
+    );
+
+    if (error) {
+      console.error("保存に失敗:", error.message);
+    }
   }
 
   // 正解回数に応じた次回出題までの日数
@@ -358,15 +376,16 @@
     <!-- 日本語（意味）を表示 -->
     <p class="meaning-main">{currentWord.meaning}</p>
 
-    <!-- 読みを見るボタン（答えを見る前でも押せる） -->
-    {#if !showReading}
-      <button class="reading-btn" onclick={() => (showReading = true)}>読みを見る</button>
-    {:else}
-      <p class="reading-hint">{currentWord.reading}</p>
-    {/if}
-
     <!-- 答えを見るボタン or タイ語・読み -->
     {#if !showAnswer}
+      <!-- 読みを見るボタン -->
+      {#if !showReading}
+        <button class="reading-btn" onclick={() => (showReading = true)}>読みを見る</button>
+      {:else}
+        <p class="reading-hint">{currentWord.reading}</p>
+      {/if}
+
+      <!-- タイ語を見るボタン -->
       <button onclick={toggleAnswer}>タイ語を見る</button>
     {:else}
       <h1 class="thai">{currentWord.thai}</h1>
@@ -646,6 +665,9 @@
 
   /* 読みを見るボタン（控えめなスタイル） */
   .reading-btn {
+    display: block;
+    margin: 0 auto;
+    margin-bottom: 12px;
     background: none;
     border: 1px solid #ccc;
     color: #999;

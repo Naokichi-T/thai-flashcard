@@ -157,8 +157,26 @@
   // 知ってる・知らないボタン
   // ============================================================
   async function saveStatus(wordNo, fields) {
-    const { error: sbError } = await supabase.from("word_status").upsert({ word_no: wordNo, stage: 3, updated_at: new Date().toISOString(), ...fields }, { onConflict: "word_no, stage" });
-    if (sbError) console.error("保存失敗:", sbError.message);
+    // ログイン中のユーザーIDを取得
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    const { error } = await supabase.from("word_status").upsert(
+      {
+        word_no: wordNo,
+        stage: 3, // reverseは2、writingは3
+        user_id: userId, // ← 追加
+        updated_at: new Date().toISOString(),
+        ...fields,
+      },
+      { onConflict: "word_no, stage, user_id" },
+    );
+
+    if (error) {
+      console.error("保存に失敗:", error.message);
+    }
   }
 
   // 正解回数に応じた次回出題までの日数

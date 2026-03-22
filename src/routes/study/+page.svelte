@@ -81,10 +81,21 @@
   // Supabase に学習進捗を保存する
   // ============================================================
   async function saveStatus(wordNo, fields) {
-    // fields には { status: '...' } や { is_favorite: true } などを渡す
+    // ログイン中のユーザーIDを取得
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
     const { error } = await supabase.from("word_status").upsert(
-      { word_no: wordNo, stage: 1, updated_at: new Date().toISOString(), ...fields },
-      { onConflict: "word_no, stage" }, // word_no と stage の組み合わせで判断
+      {
+        word_no: wordNo,
+        stage: 1, // reverseは2、writingは3
+        user_id: userId, // ← 追加
+        updated_at: new Date().toISOString(),
+        ...fields,
+      },
+      { onConflict: "word_no, stage, user_id" },
     );
 
     if (error) {
