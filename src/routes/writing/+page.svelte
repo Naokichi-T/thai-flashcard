@@ -13,6 +13,7 @@
   let currentIndex = $state(0);
   let input = $state(""); // 入力されたタイ語
   let checked = $state(false); // 答え合わせをしたかどうか
+  let showReading = $state(false); // 読みを表示するかどうか
   let isCorrect = $state(false); // 正解かどうか
   let loading = $state(true);
   let error = $state("");
@@ -114,6 +115,7 @@
     input = "";
     checked = false;
     isCorrect = false;
+    showReading = false;
   }
 
   // ============================================================
@@ -235,6 +237,13 @@
     <!-- 日本語（意味）を表示 -->
     <p class="meaning-main">{currentWord.meaning}</p>
 
+    <!-- 読みを見るボタン -->
+    {#if !showReading}
+      <button class="reading-btn" onclick={() => (showReading = true)}>読みを見る</button>
+    {:else}
+      <p class="reading-hint">{currentWord.reading}</p>
+    {/if}
+
     <!-- 入力エリア（答え合わせ前） -->
     {#if !checked}
       <input class="thai-input" type="text" placeholder="タイ語を入力..." bind:value={input} />
@@ -250,7 +259,6 @@
       <!-- 正解と入力の比較 -->
       <div class="answer-compare">
         <p>正解：<span class="thai">{currentWord.thai}</span></p>
-        <p>読み：<span class="reading">{currentWord.reading}</span></p>
         <p>入力：<span class={isCorrect ? "correct-text" : "incorrect-text"}>{input}</span></p>
       </div>
 
@@ -506,5 +514,26 @@
     color: #aaa;
     margin-top: 16px;
     margin-bottom: 16px;
+  }
+
+  .reading-btn {
+    background: none;
+    border: 1px solid #ccc;
+    color: #999;
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+  .reading-btn:hover {
+    background: #f0f0f0;
+    color: #666;
+  }
+
+  .reading-hint {
+    font-size: 16px;
+    color: #aaa;
+    margin-bottom: 12px;
   }
 </style>

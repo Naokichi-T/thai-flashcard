@@ -12,6 +12,7 @@
   let statuses = $state({});
   let currentIndex = $state(0);
   let showAnswer = $state(false); // タイ語・読みを表示するかどうか
+  let showReading = $state(false); // 読みを表示するかどうか
   let loading = $state(true);
   let error = $state("");
 
@@ -105,6 +106,7 @@
     mode;
     filteredIndex = 0;
     showAnswer = false;
+    showReading = false;
   });
 
   let currentWord = $derived(filteredWords[filteredIndex]);
@@ -118,11 +120,13 @@
 
   function nextWord() {
     showAnswer = false;
+    showReading = false;
     filteredIndex = (filteredIndex + 1) % filteredWords.length;
   }
 
   function prevWord() {
     showAnswer = false;
+    showReading = false;
     filteredIndex = (filteredIndex - 1 + filteredWords.length) % filteredWords.length;
   }
 
@@ -241,12 +245,18 @@
     <!-- 日本語（意味）を表示 -->
     <p class="meaning-main">{currentWord.meaning}</p>
 
+    <!-- 読みを見るボタン（答えを見る前でも押せる） -->
+    {#if !showReading}
+      <button class="reading-btn" onclick={() => (showReading = true)}>読みを見る</button>
+    {:else}
+      <p class="reading-hint">{currentWord.reading}</p>
+    {/if}
+
     <!-- 答えを見るボタン or タイ語・読み -->
     {#if !showAnswer}
       <button onclick={toggleAnswer}>タイ語を見る</button>
     {:else}
       <h1 class="thai">{currentWord.thai}</h1>
-      <p class="reading">{currentWord.reading}</p>
       <div class="word-meta">
         <span>頻出 {currentWord.frequency ?? "-"}</span>
         <span>格式 {currentWord.formality ?? "-"}</span>
@@ -467,5 +477,28 @@
     font-size: 12px;
     color: #aaa;
     margin-bottom: 16px;
+  }
+
+  /* 読みを見るボタン（控えめなスタイル） */
+  .reading-btn {
+    background: none;
+    border: 1px solid #ccc;
+    color: #999;
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+  .reading-btn:hover {
+    background: #f0f0f0;
+    color: #666;
+  }
+
+  /* 読みの表示 */
+  .reading-hint {
+    font-size: 16px;
+    color: #aaa;
+    margin-bottom: 12px;
   }
 </style>
