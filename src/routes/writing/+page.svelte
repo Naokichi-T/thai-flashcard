@@ -48,7 +48,7 @@
       words = allWords;
 
       // stage3の進捗を読み込む
-      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite").eq("stage", 3);
+      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending").eq("stage", 3);
       if (sbError) throw new Error(sbError.message);
 
       const loaded = {};
@@ -56,6 +56,7 @@
         loaded[row.word_no] = {
           status: row.status,
           isFavorite: row.is_favorite ?? false,
+          isPending: row.is_pending ?? false,
         };
       }
       statuses = loaded;
@@ -81,18 +82,21 @@
 
   let filteredWords = $derived(
     (() => {
-      if (mode === "today") {
-        const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown");
+      if (mode === "unknown") {
+        return words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
+      } else if (mode === "today") {
+        const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
         const seed = parseInt(todayKey.replace(/-/g, ""));
         return seededShuffle(unknowns, seed).slice(0, todayLimit);
-      } else if (mode === "unknown") {
-        return words.filter((w) => statuses[w.no]?.status === "unknown");
-      } else if (mode === "unanswered") {
-        return words.filter((w) => !statuses[w.no]?.status);
       } else if (mode === "favorite") {
-        return words.filter((w) => statuses[w.no]?.isFavorite);
+        return words.filter((w) => statuses[w.no]?.isFavorite && !statuses[w.no]?.isPending);
+      } else if (mode === "unanswered") {
+        return words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending);
+      } else if (mode === "pending") {
+        return words.filter((w) => statuses[w.no]?.isPending);
+      } else {
+        return words.filter((w) => !statuses[w.no]?.isPending);
       }
-      return words;
     })(),
   );
 
@@ -107,6 +111,7 @@
   let currentWord = $derived(filteredWords[filteredIndex]);
   let currentStatus = $derived(statuses[currentWord?.no]?.status);
   let isFavorite = $derived(statuses[currentWord?.no]?.isFavorite ?? false);
+  let isPending = $derived(statuses[currentWord?.no]?.isPending ?? false);
 
   // ============================================================
   // カードをリセットする
@@ -171,6 +176,20 @@
     statuses = { ...statuses, [wordNo]: { ...statuses[wordNo], isFavorite: newVal } };
     await saveStatus(wordNo, { is_favorite: newVal });
   }
+
+  // ============================================================
+  // 保留
+  // ============================================================
+  async function togglePending() {
+    const wordNo = currentWord.no;
+    // 今の状態を反転する
+    const newVal = !statuses[wordNo]?.isPending;
+    statuses = {
+      ...statuses,
+      [wordNo]: { ...statuses[wordNo], isPending: newVal },
+    };
+    await saveStatus(wordNo, { is_pending: newVal });
+  }
 </script>
 
 <!-- ============================================================
@@ -189,9 +208,19 @@
   </div>
 {:else if filteredWords.length === 0}
   <div class="card">
-    <p style="font-size: 48px;">🎉</p>
-    <p>該当する単語がありません！</p>
-    <button onclick={() => (mode = "all")}>全部を見る</button>
+    {#if mode === "pending"}
+      <p style="font-size: 48px;">💤</p>
+      <p>保留中の単語はありません</p>
+      <button onclick={() => (mode = "all")}>全部を見る</button>
+    {:else if mode === "favorite"}
+      <p style="font-size: 48px;">⭐</p>
+      <p>お気に入りの単語はありません</p>
+      <button onclick={() => (mode = "all")}>全部を見る</button>
+    {:else}
+      <p style="font-size: 48px;">🎉</p>
+      <p>該当する単語がありません！</p>
+      <button onclick={() => (mode = "all")}>全部を見る</button>
+    {/if}
   </div>
 {:else if currentWord}
   <div class="card">
@@ -215,14 +244,20 @@
       <button class:active={mode === "favorite"} onclick={() => (mode = "favorite")}>
         ⭐ お気に入り<span class="count">{Object.values(statuses).filter((s) => s?.isFavorite).length}</span>
       </button>
+      <button class:active={mode === "pending"} onclick={() => (mode = "pending")}>
+        💤 保留<span class="count">{words.filter((w) => statuses[w.no]?.isPending).length}</span>
+      </button>
     </div>
 
-    <!-- 番号・お気に入り -->
+    <!-- 番号・お気に入り・保留ボタン -->
     <div class="top-row">
       <p class="counter">{filteredIndex + 1} / {filteredWords.length}</p>
-      <button class="fav-btn" onclick={toggleFavorite}>
-        {isFavorite ? "★" : "☆"}
-      </button>
+      <div class="top-buttons">
+        <button class="fav-btn" onclick={toggleFavorite}>
+          {isFavorite ? "★" : "☆"}
+        </button>
+        <button class="pending-btn" class:active={isPending} onclick={togglePending}> 💤 </button>
+      </div>
     </div>
 
     <!-- ステータスバッジ -->
@@ -533,5 +568,29 @@
     font-size: 16px;
     color: #aaa;
     margin-bottom: 12px;
+  }
+
+  .top-buttons {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .pending-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0.3; /* 保留していないときは薄く表示 */
+  }
+
+  .pending-btn:hover {
+    background: none;
+    opacity: 0.6;
+  }
+
+  .pending-btn.active {
+    opacity: 1;
   }
 </style>
