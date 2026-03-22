@@ -53,7 +53,7 @@
       const total = words.length;
       const pending = words.filter((w) => statuses[w.no]?.isPending).length;
       const target = total - pending; // 保留を除いた学習対象
-      const known = words.filter((w) => statuses[w.no]?.status === "known" && !statuses[w.no]?.isPending).length;
+      const known = words.filter((w) => statuses[w.no]?.status === "known").length;
       const unanswered = words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending).length;
       const rate = target > 0 ? Math.round((known / target) * 100) : 0;
 
@@ -75,7 +75,7 @@
 
         const pending = freqWords.filter((w) => statuses[w.no]?.isPending).length;
         const target = total - pending;
-        const known = freqWords.filter((w) => statuses[w.no]?.status === "known" && !statuses[w.no]?.isPending).length;
+        const known = freqWords.filter((w) => statuses[w.no]?.status === "known").length;
         const rate = target > 0 ? Math.round((known / target) * 100) : 0;
 
         result.push({ freq, total, pending, known, target, rate });
