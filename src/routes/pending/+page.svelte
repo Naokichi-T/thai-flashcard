@@ -80,27 +80,24 @@
   HTML
 ============================================================ -->
 
-<div class="container">
-  <!-- メニューに戻る -->
-  <a href="/" class="back-link">← メニューに戻る</a>
-
-  <h1 class="title">💤 保留一覧</h1>
-
-  {#if loading}
-    <p>読み込み中...</p>
-  {:else if error}
-    <p style="color:red;">エラー: {error}</p>
-  {:else}
+{#if loading}
+  <p>読み込み中...</p>
+{:else if error}
+  <p style="color:red;">エラー: {error}</p>
+{:else}
+  <div class="container">
+    <a href="/" class="back-link">← メニューに戻る</a>
+    <h1 class="title">💤 保留一覧</h1>
     <!-- stageタブ -->
     <div class="tabs">
       <button class:active={activeStage === 1} onclick={() => (activeStage = 1)}>
-        Stage 1<span class="count">{countByStage[1]}</span>
+        タイ語→日本語<span class="count">{countByStage[1]}</span>
       </button>
       <button class:active={activeStage === 2} onclick={() => (activeStage = 2)}>
-        Stage 2<span class="count">{countByStage[2]}</span>
+        日本語→タイ語<span class="count">{countByStage[2]}</span>
       </button>
       <button class:active={activeStage === 3} onclick={() => (activeStage = 3)}>
-        Stage 3<span class="count">{countByStage[3]}</span>
+        書き取り<span class="count">{countByStage[3]}</span>
       </button>
     </div>
 
@@ -121,8 +118,9 @@
         {/each}
       </ul>
     {/if}
-  {/if}
-</div>
+    <!-- {/if} -->
+  </div>
+{/if}
 
 <style>
   .container {
@@ -257,5 +255,13 @@
 
   .release-btn:hover {
     background: #cbd5e0;
+  }
+
+  .container {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    width: 340px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }
 </style>
