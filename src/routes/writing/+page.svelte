@@ -254,8 +254,13 @@
         <p>入力：<span class={isCorrect ? "correct-text" : "incorrect-text"}>{input}</span></p>
       </div>
 
+      <!-- 頻出度・フォーマル度 -->
+      <div class="word-meta">
+        <span>頻出 {currentWord.frequency ?? "-"}</span>
+        <span>格式 {currentWord.formality ?? "-"}</span>
+      </div>
       <!-- gotthaiリンク -->
-      <a class="gotthai-link" href={currentWord.url} target="_blank" rel="noreferrer"> 🔗 gotthaiで見る </a>
+      <a class="gotthai-link" href={currentWord.url} target="_blank" rel="noreferrer"> 🔗 ごったいで見る </a>
 
       <!-- 知ってる・知らないボタン -->
       <div class="judge">
@@ -428,6 +433,7 @@
     color: #666;
   }
   .correct-text {
+    font-size: 20px;
     color: #28a745;
     font-weight: bold;
   }
@@ -489,5 +495,16 @@
   }
   .unknown-btn:hover {
     background: #bd2130;
+  }
+
+  /* 頻出度・フォーマル度の小さい表示 */
+  .word-meta {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 16px;
+    margin-bottom: 16px;
   }
 </style>

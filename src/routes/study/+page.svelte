@@ -283,6 +283,12 @@
     <!-- 読み -->
     <p class="reading">{currentWord.reading}</p>
 
+    <!-- 頻出度・フォーマル度 -->
+    <div class="word-meta">
+      <span>頻出 {currentWord.frequency ?? "-"}</span>
+      <span>格式 {currentWord.formality ?? "-"}</span>
+    </div>
+
     <!-- gotthaiリンク -->
     <a class="gotthai-link" href={currentWord.url} target="_blank" rel="noreferrer"> 🔗 ごったいで見る </a>
 
@@ -491,5 +497,15 @@
 
   .back-link:hover {
     color: #2a7ae2;
+  }
+
+  /* 頻出度・フォーマル度の小さい表示 */
+  .word-meta {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 16px;
   }
 </style>
