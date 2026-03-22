@@ -658,6 +658,7 @@
     text-decoration: none;
     margin-top: 16px;
     margin-bottom: 10px;
+    text-align: left;
   }
 
   .back-link:hover {

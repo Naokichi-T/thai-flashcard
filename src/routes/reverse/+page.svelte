@@ -409,6 +409,7 @@
     color: #999;
     text-decoration: none;
     margin-bottom: 10px;
+    text-align: left;
   }
   .back-link:hover {
     color: #2a7ae2;
