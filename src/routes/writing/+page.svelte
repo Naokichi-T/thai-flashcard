@@ -253,6 +253,11 @@
     };
     await saveStatus(wordNo, { is_pending: newVal });
   }
+
+  // 999以上は「999+」と表示する
+  function formatCount(n) {
+    return n > 999 ? "999+" : n;
+  }
 </script>
 
 <!-- ============================================================
@@ -296,32 +301,41 @@
 
     <!-- モード切り替え -->
     <div class="mode-switch">
-      <button class:active={mode === "all"} onclick={() => (mode = "all")}>
-        📚 全部<span class="count">{words.length}</span>
-      </button>
-      <button class:active={mode === "unanswered"} onclick={() => (mode = "unanswered")}>
-        ❓ 未回答<span class="count">{words.filter((w) => !statuses[w.no]?.status).length}</span>
-      </button>
-      <button class:active={mode === "unknown"} onclick={() => (mode = "unknown")}>
-        ❌ 知らない<span class="count">{Object.values(statuses).filter((s) => s?.status === "unknown").length}</span>
-      </button>
-      <button class:active={mode === "today"} onclick={() => (mode = "today")}>
-        📅 今日の{todayLimit}問
-      </button>
-      <button class:active={mode === "favorite"} onclick={() => (mode = "favorite")}>
-        ⭐ お気に入り<span class="count">{Object.values(statuses).filter((s) => s?.isFavorite).length}</span>
-      </button>
-      <button class:active={mode === "pending"} onclick={() => (mode = "pending")}>
-        💤 保留<span class="count">{words.filter((w) => statuses[w.no]?.isPending).length}</span>
-      </button>
-      <button class:active={mode === "review"} onclick={() => (mode = "review")}>
-        🔁 復習<span class="count"
-          >{words.filter((w) => {
-            const next = statuses[w.no]?.nextReviewAt;
-            return next && new Date(next) <= new Date();
-          }).length}</span
-        >
-      </button>
+      <!-- 上段：よく使う3つ -->
+      <div class="mode-primary">
+        <button class:active={mode === "review"} onclick={() => (mode = "review")}>
+          🔁 復習<span class="count"
+            >{formatCount(
+              words.filter((w) => {
+                const next = statuses[w.no]?.nextReviewAt;
+                return next && new Date(next) <= new Date();
+              }).length,
+            )}</span
+          >
+        </button>
+        <button class:active={mode === "today"} onclick={() => (mode = "today")}>
+          📅 今日の{todayLimit}問
+        </button>
+        <button class:active={mode === "unanswered"} onclick={() => (mode = "unanswered")}>
+          ❓ 未回答<span class="count">{formatCount(words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span>
+        </button>
+      </div>
+
+      <!-- 下段：サブ4つ -->
+      <div class="mode-secondary">
+        <button class:active={mode === "all"} onclick={() => (mode = "all")}>
+          📚 全部<span class="count">{formatCount(words.filter((w) => !statuses[w.no]?.isPending).length)}</span>
+        </button>
+        <button class:active={mode === "unknown"} onclick={() => (mode = "unknown")}>
+          ❌ 知らない<span class="count">{formatCount(Object.values(statuses).filter((s) => s?.status === "unknown").length)}</span>
+        </button>
+        <button class:active={mode === "favorite"} onclick={() => (mode = "favorite")}>
+          ⭐ スター<span class="count">{formatCount(Object.values(statuses).filter((s) => s?.isFavorite).length)}</span>
+        </button>
+        <button class:active={mode === "pending"} onclick={() => (mode = "pending")}>
+          💤 保留<span class="count">{formatCount(words.filter((w) => statuses[w.no]?.isPending).length)}</span>
+        </button>
+      </div>
     </div>
 
     <!-- 番号・お気に入り・保留ボタン -->
@@ -417,10 +431,67 @@
   }
 
   .mode-switch {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 8px;
     margin-bottom: 16px;
+  }
+
+  /* 上段：3つ均等 */
+  .mode-primary {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  /* 下段：4つ均等 */
+  .mode-secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .mode-primary button {
+    background: #e2e8f0;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 4px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .mode-secondary button {
+    background: #f0f4f8;
+    color: #666;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 2px;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .mode-primary button.active {
+    background: #2a7ae2;
+    color: white;
+  }
+
+  .mode-secondary button.active {
+    background: #2a7ae2;
+    color: white;
+  }
+
+  .mode-primary button.active .count,
+  .mode-secondary button.active .count {
+    color: #cce0ff;
   }
 
   .mode-switch button {
