@@ -48,7 +48,7 @@
       words = allWords;
 
       // stage3の進捗を読み込む
-      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending").eq("stage", 3);
+      const { data, error: sbError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 3);
       if (sbError) throw new Error(sbError.message);
 
       const loaded = {};
@@ -57,6 +57,8 @@
           status: row.status,
           isFavorite: row.is_favorite ?? false,
           isPending: row.is_pending ?? false,
+          reviewCount: row.review_count ?? 0,
+          nextReviewAt: row.next_review_at ?? null,
         };
       }
       statuses = loaded;
@@ -94,6 +96,12 @@
         return words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending);
       } else if (mode === "pending") {
         return words.filter((w) => statuses[w.no]?.isPending);
+      } else if (mode === "review") {
+        const now = new Date();
+        return words.filter((w) => {
+          const next = statuses[w.no]?.nextReviewAt;
+          return next && new Date(next) <= now;
+        });
       } else {
         return words.filter((w) => !statuses[w.no]?.isPending);
       }
@@ -153,17 +161,72 @@
     if (sbError) console.error("保存失敗:", sbError.message);
   }
 
+  // 正解回数に応じた次回出題までの日数
+  function getNextInterval(count) {
+    // 1回目→1日、2回目→3日、3回目→7日、4回目→14日、5回目→30日
+    // 6回目以降は前回の2倍ずつ伸びていく
+    const base = [1, 3, 7, 14, 30];
+    if (count <= base.length) {
+      return base[count - 1];
+    }
+    // 6回目以降：30 * 2^(count-5)
+    return Math.round(30 * Math.pow(2, count - 5));
+  }
+
   async function markKnown() {
     const wordNo = currentWord.no;
-    statuses = { ...statuses, [wordNo]: { ...statuses[wordNo], status: "known" } };
-    await saveStatus(wordNo, { status: "known" });
+
+    // 今の正解回数を取得（なければ0）
+    const currentCount = statuses[wordNo]?.reviewCount ?? 0;
+    const newCount = currentCount + 1;
+
+    // 次回出題日を計算する
+    const days = getNextInterval(newCount);
+    const nextReview = new Date();
+    nextReview.setDate(nextReview.getDate() + days); // 今日 + days日後
+
+    statuses = {
+      ...statuses,
+      [wordNo]: {
+        ...statuses[wordNo],
+        status: "known",
+        reviewCount: newCount,
+        nextReviewAt: nextReview.toISOString(),
+      },
+    };
+
+    await saveStatus(wordNo, {
+      status: "known",
+      review_count: newCount,
+      next_review_at: nextReview.toISOString(),
+    });
+
     if (filteredWords.length > 1) nextWord();
   }
 
   async function markUnknown() {
     const wordNo = currentWord.no;
-    statuses = { ...statuses, [wordNo]: { ...statuses[wordNo], status: "unknown" } };
-    await saveStatus(wordNo, { status: "unknown" });
+
+    // 明日また出題されるようにリセット
+    const nextReview = new Date();
+    nextReview.setDate(nextReview.getDate() + 1);
+
+    statuses = {
+      ...statuses,
+      [wordNo]: {
+        ...statuses[wordNo],
+        status: "unknown",
+        reviewCount: 0,
+        nextReviewAt: nextReview.toISOString(),
+      },
+    };
+
+    await saveStatus(wordNo, {
+      status: "unknown",
+      review_count: 0,
+      next_review_at: nextReview.toISOString(),
+    });
+
     if (filteredWords.length > 1) nextWord();
   }
 
@@ -216,6 +279,10 @@
       <p style="font-size: 48px;">⭐</p>
       <p>お気に入りの単語はありません</p>
       <button onclick={() => (mode = "all")}>全部を見る</button>
+    {:else if mode === "review"}
+      <p style="font-size: 48px;">🎉</p>
+      <p>今日の復習はありません！</p>
+      <button onclick={() => (mode = "all")}>全部を見る</button>
     {:else}
       <p style="font-size: 48px;">🎉</p>
       <p>該当する単語がありません！</p>
@@ -246,6 +313,14 @@
       </button>
       <button class:active={mode === "pending"} onclick={() => (mode = "pending")}>
         💤 保留<span class="count">{words.filter((w) => statuses[w.no]?.isPending).length}</span>
+      </button>
+      <button class:active={mode === "review"} onclick={() => (mode = "review")}>
+        🔁 復習<span class="count"
+          >{words.filter((w) => {
+            const next = statuses[w.no]?.nextReviewAt;
+            return next && new Date(next) <= new Date();
+          }).length}</span
+        >
       </button>
     </div>
 
