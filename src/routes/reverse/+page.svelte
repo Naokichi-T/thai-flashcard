@@ -426,7 +426,8 @@
     background: white;
     border-radius: 16px;
     padding: 40px;
-    width: 340px;
+    width: 90vw; /* 画面幅の90% */
+    max-width: 400px; /* 最大400px */
     text-align: center;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }

@@ -446,7 +446,8 @@
     background: white;
     border-radius: 16px;
     padding: 40px;
-    width: 340px;
+    width: 90vw;
+    max-width: 400px;
     text-align: center;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }
