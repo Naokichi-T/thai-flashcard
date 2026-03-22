@@ -31,6 +31,13 @@
       <span class="desc">日本語を見て綴りを答える</span>
     </a>
 
+    <!-- 進捗確認 -->
+    <a href="/progress" class="mode-card">
+      <span class="icon">📊</span>
+      <span class="name">進捗確認</span>
+      <span class="desc">頻出度別の学習進捗を確認する</span>
+    </a>
+
     <!-- 保留一覧 -->
     <a href="/pending" class="mode-card">
       <span class="icon">💤</span>
