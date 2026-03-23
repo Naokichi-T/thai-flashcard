@@ -855,8 +855,8 @@
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 18px;
     box-sizing: border-box;
-    font-family: inherit;
+    font-family: Noto Sans Thai;
   }
 </style>
