@@ -424,7 +424,7 @@
           >
         </button>
         <button class:active={mode === "today"} onclick={() => (mode = "today")}>
-          📅 今日の{todayLimit}問
+          📅 今日の{todayLimit}問<span class="count">{formatCount(Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit))}</span>
         </button>
         <button class:active={mode === "unanswered"} onclick={() => (mode = "unanswered")}>
           ❓ 未回答<span class="count">{formatCount(words.filter((w) => stage1Statuses[w.no]?.status === "known" && !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span>

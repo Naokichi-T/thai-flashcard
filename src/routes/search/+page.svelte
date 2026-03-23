@@ -11,6 +11,41 @@
   let results = $state([]); // 検索結果
   let searching = $state(false); // 検索中フラグ
   let searched = $state(false); // 一度でも検索したかどうか
+  // stage1・stage2の進捗データ（グレーアウト判定用）
+  let stage1Statuses = $state({});
+  let stage2Statuses = $state({});
+
+  onMount(async () => {
+    // stage1の進捗を全件取得
+    const loaded1 = {};
+    let from1 = 0;
+    while (true) {
+      const { data: s1 } = await supabase
+        .from("word_status")
+        .select("word_no, status")
+        .eq("stage", 1)
+        .range(from1, from1 + 999);
+      for (const row of s1 ?? []) loaded1[row.word_no] = row.status;
+      if ((s1?.length ?? 0) < 1000) break;
+      from1 += 1000;
+    }
+    stage1Statuses = loaded1;
+
+    // stage2の進捗を全件取得
+    const loaded2 = {};
+    let from2 = 0;
+    while (true) {
+      const { data: s2 } = await supabase
+        .from("word_status")
+        .select("word_no, status")
+        .eq("stage", 2)
+        .range(from2, from2 + 999);
+      for (const row of s2 ?? []) loaded2[row.word_no] = row.status;
+      if ((s2?.length ?? 0) < 1000) break;
+      from2 += 1000;
+    }
+    stage2Statuses = loaded2;
+  });
 
   // ============================================================
   // 検索実行
@@ -79,9 +114,16 @@
 
           <!-- ジャンプボタン -->
           <div class="jump-buttons">
+            <!-- studyは常に押せる -->
             <a href="/study?word={word.no}" class="jump-btn">🇹🇭 タイ語→日本語</a>
-            <a href="/reverse?word={word.no}" class="jump-btn">🇯🇵 日本語→タイ語</a>
-            <a href="/writing?word={word.no}" class="jump-btn">✏️ 書き取り</a>
+
+            <!-- reverseはstage1がknownのときだけ押せる -->
+
+            <a href={stage1Statuses[word.no] === "known" ? `/reverse?word=${word.no}` : undefined} class="jump-btn" class:disabled={stage1Statuses[word.no] !== "known"}>🇯🇵 日本語→タイ語</a>
+
+            <!-- writingはstage2がknownのときだけ押せる -->
+
+            <a href={stage2Statuses[word.no] === "known" ? `/writing?word=${word.no}` : undefined} class="jump-btn" class:disabled={stage2Statuses[word.no] !== "known"}>✏️ 書き取り</a>
           </div>
         </li>
       {/each}
@@ -221,5 +263,13 @@
 
   .jump-btn:hover {
     background: #1a5fbb;
+  }
+
+  /* グレーアウトされたジャンプボタン */
+  .jump-btn.disabled {
+    background: #ccc;
+    color: #999;
+    cursor: default;
+    pointer-events: none;
   }
 </style>
