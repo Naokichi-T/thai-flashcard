@@ -45,7 +45,6 @@
     try {
       // 全単語を取得（1000件ずつ分割）
       words = await fetchAllWords();
-      console.log("取得件数:", words.length); // 確認用
 
       // stage1の進捗を取得
       const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 1);

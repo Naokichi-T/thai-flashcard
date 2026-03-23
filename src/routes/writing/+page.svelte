@@ -10,6 +10,9 @@
 
   // --- 状態変数 ---
   let words = $state([]);
+  // stage2の進捗（全部モードのフィルタ用・読み取り専用）
+  let stage1Statuses = $state({});
+  // stage3の進捗（writingでの知ってる/知らない用）
   let statuses = $state({});
   let currentIndex = $state(0);
   let input = $state(""); // 入力されたタイ語
@@ -69,10 +72,9 @@
     try {
       // 全単語を取得（1000件ずつ分割）
       words = await fetchAllWords();
-      console.log("取得件数:", words.length); // 確認用
 
-      // stage1の進捗を取得
-      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 1);
+      // stage2の進捗を取得
+      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 2); // ← writingはstage2を読み込む
 
       if (statusError) throw new Error(statusError.message);
 
@@ -86,7 +88,25 @@
           nextReviewAt: row.next_review_at ?? null,
         };
       }
-      statuses = loaded;
+      // stage1のデータはstage1Statusesに入れる
+      stage1Statuses = loaded;
+
+      // stage3の進捗を取得
+      const { data: status2Data, error: status2Error } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 3);
+
+      if (status2Error) throw new Error(status2Error.message);
+
+      const loaded2 = {};
+      for (const row of status2Data) {
+        loaded2[row.word_no] = {
+          status: row.status,
+          isFavorite: row.is_favorite ?? false,
+          isPending: row.is_pending ?? false,
+          reviewCount: row.review_count ?? 0,
+          nextReviewAt: row.next_review_at ?? null,
+        };
+      }
+      statuses = loaded2;
 
       // メモを取得
       const { data: memoData, error: memoError } = await supabase.from("word_memo").select("word_no, memo");
@@ -131,7 +151,8 @@
       } else if (mode === "favorite") {
         return words.filter((w) => statuses[w.no]?.isFavorite && !statuses[w.no]?.isPending);
       } else if (mode === "unanswered") {
-        return words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending);
+        // 未回答 = stage2で「知ってる」かつwritingでまだ回答していない単語
+        return words.filter((w) => stage1Statuses[w.no]?.status === "known" && !statuses[w.no]?.status && !statuses[w.no]?.isPending);
       } else if (mode === "pending") {
         return words.filter((w) => statuses[w.no]?.isPending);
       } else if (mode === "review") {
@@ -141,7 +162,8 @@
           return next && new Date(next) <= now;
         });
       } else {
-        return words;
+        // 全部 = stage2で「知ってる」にした単語（writingでの状態は問わない）
+        return words.filter((w) => stage1Statuses[w.no]?.status === "known");
       }
     })(),
   );
@@ -204,7 +226,7 @@
     const { error } = await supabase.from("word_status").upsert(
       {
         word_no: wordNo,
-        stage: 3, // reverseは2、writingは3
+        stage: 3, // writingは3
         user_id: userId, // ← 追加
         updated_at: new Date().toISOString(),
         ...fields,
@@ -413,14 +435,14 @@
           📅 今日の{todayLimit}問
         </button>
         <button class:active={mode === "unanswered"} onclick={() => (mode = "unanswered")}>
-          ❓ 未回答<span class="count">{formatCount(words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span>
+          ❓ 未回答<span class="count">{formatCount(words.filter((w) => stage1Statuses[w.no]?.status === "known" && !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span>
         </button>
       </div>
 
       <!-- 下段：サブ4つ -->
       <div class="mode-secondary">
         <button class:active={mode === "all"} onclick={() => (mode = "all")}>
-          📚 全部<span class="count">{formatCount(words.filter((w) => !statuses[w.no]?.isPending).length)}</span>
+          📚 全部<span class="count">{formatCount(words.filter((w) => stage1Statuses[w.no]?.status === "known").length)}</span>
         </button>
         <button class:active={mode === "unknown"} onclick={() => (mode = "unknown")}>
           ❌ 知らない<span class="count">{formatCount(Object.values(statuses).filter((s) => s?.status === "unknown").length)}</span>
