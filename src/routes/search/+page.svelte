@@ -115,11 +115,11 @@
           <!-- ジャンプボタン -->
           <div class="jump-buttons">
             <!-- studyは常に押せる -->
-            <a href="/study?word={word.no}" class="jump-btn">🇹🇭 タイ語→日本語</a>
+            <a href="/study?word={word.no}" class="jump-btn">🇹🇭 タイ→日</a>
 
             <!-- reverseはstage1がknownのときだけ押せる -->
 
-            <a href={stage1Statuses[word.no] === "known" ? `/reverse?word=${word.no}` : undefined} class="jump-btn" class:disabled={stage1Statuses[word.no] !== "known"}>🇯🇵 日本語→タイ語</a>
+            <a href={stage1Statuses[word.no] === "known" ? `/reverse?word=${word.no}` : undefined} class="jump-btn" class:disabled={stage1Statuses[word.no] !== "known"}>🇯🇵 日→タイ</a>
 
             <!-- writingはstage2がknownのときだけ押せる -->
 
