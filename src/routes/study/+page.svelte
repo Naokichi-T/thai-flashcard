@@ -296,8 +296,8 @@
           return next && new Date(next) <= now;
         });
       } else {
-        // 全部（保留は除外）
-        return words.filter((w) => !statuses[w.no]?.isPending);
+        // 全部（保留も含めて全単語を表示）
+        return words;
       }
     })(),
   );
@@ -410,7 +410,9 @@
     </div>
 
     <!-- 今の単語の状態バッジ -->
-    {#if currentStatus === "known"}
+    {#if isPending}
+      <span class="badge pending">💤 保留中</span>
+    {:else if currentStatus === "known"}
       <span class="badge known">✅ 知ってる</span>
     {:else if currentStatus === "unknown"}
       <span class="badge unknown">❌ 知らない</span>
@@ -528,6 +530,12 @@
   .none {
     background: #e2e8f0;
     color: #666;
+  }
+
+  /* 保留バッジ */
+  .pending {
+    background: #fff3cd;
+    color: #856404;
   }
 
   /* 知ってる／知らないボタンエリア */

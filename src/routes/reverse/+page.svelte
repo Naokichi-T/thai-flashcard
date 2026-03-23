@@ -113,7 +113,7 @@
           return next && new Date(next) <= now;
         });
       } else {
-        return words.filter((w) => !statuses[w.no]?.isPending);
+        return words;
       }
     })(),
   );
@@ -374,7 +374,9 @@
     </div>
 
     <!-- ステータスバッジ -->
-    {#if currentStatus === "known"}
+    {#if isPending}
+      <span class="badge pending">💤 保留中</span>
+    {:else if currentStatus === "known"}
       <span class="badge known">✅ 知ってる</span>
     {:else if currentStatus === "unknown"}
       <span class="badge unknown">❌ 知らない</span>
@@ -633,6 +635,11 @@
   .none {
     background: #e2e8f0;
     color: #666;
+  }
+
+  .pending {
+    background: #fff3cd;
+    color: #856404;
   }
 
   .top-row {
