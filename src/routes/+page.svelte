@@ -43,6 +43,13 @@
       <span class="name">保留一覧</span>
       <span class="desc">保留中の単語を確認・解除する</span>
     </a>
+
+    <!-- 検索 -->
+    <a href="/search" class="mode-card">
+      <span class="icon">🔍</span>
+      <span class="name">検索</span>
+      <span class="desc">タイ語・日本語で単語を検索する</span>
+    </a>
   </div>
 </div>
 

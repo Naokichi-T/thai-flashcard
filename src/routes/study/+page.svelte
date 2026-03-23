@@ -6,6 +6,7 @@
   // onMount：ページが表示されたタイミングで処理を実行するための関数
   import { onMount } from "svelte";
   import { supabase } from "$lib/supabase.js";
+  import { page } from "$app/stores";
 
   // --- 状態変数 ---
   let words = $state([]);
@@ -73,6 +74,18 @@
         loadedMemos[row.word_no] = row.memo;
       }
       memos = loadedMemos;
+
+      // URLパラメータ ?word=123 があればその単語の位置に飛ぶ
+      const wordParam = $page.url.searchParams.get("word");
+      if (wordParam) {
+        // 全部モードにする
+        mode = "all";
+        // 該当する単語のインデックスを探す
+        const targetIndex = words.findIndex((w) => String(w.no) === wordParam);
+        if (targetIndex !== -1) {
+          filteredIndex = targetIndex;
+        }
+      }
 
       loading = false;
     } catch (e) {
