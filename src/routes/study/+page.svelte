@@ -336,11 +336,13 @@
   // 次へ・前へも filteredWords ベースに変更
   function nextWord() {
     showMeaning = false;
+    showMemoPanel = false;
     filteredIndex = (filteredIndex + 1) % filteredWords.length;
   }
 
   function prevWord() {
     showMeaning = false;
+    showMemoPanel = false;
     filteredIndex = (filteredIndex - 1 + filteredWords.length) % filteredWords.length;
   }
 
@@ -374,6 +376,18 @@
   // ✏️ボタンを押したとき：メモパネルの開閉
   function toggleMemoPanel() {
     showMemoPanel = !showMemoPanel;
+
+    // パネルを開いたとき、既存メモの高さに合わせる
+    if (showMemoPanel) {
+      // DOMが更新されてからtextareaの高さを調整する
+      setTimeout(() => {
+        const textarea = document.querySelector(".memo-textarea");
+        if (textarea) {
+          textarea.style.height = "auto";
+          textarea.style.height = textarea.scrollHeight + "px";
+        }
+      }, 0);
+    }
   }
 
   // メモの内容が変わったとき：状態を更新して保存
@@ -384,6 +398,9 @@
     memos = { ...memos, [wordNo]: text };
     // Supabaseに保存
     await saveMemo(wordNo, text);
+    // 入力内容に応じてtextareaの高さを自動調整
+    e.target.style.height = "auto";
+    e.target.style.height = e.target.scrollHeight + "px";
   }
 </script>
 
@@ -832,12 +849,13 @@
 
   .memo-textarea {
     width: 100%;
-    min-height: 100px;
+    min-height: 60px;
+    height: auto;
+    resize: none;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 8px;
     font-size: 14px;
-    resize: vertical; /* 縦方向にだけリサイズ可能 */
     box-sizing: border-box;
     font-family: inherit;
   }
