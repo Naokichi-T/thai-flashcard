@@ -806,7 +806,7 @@
 
   .top-buttons {
     display: flex;
-    gap: 4px;
+    gap: 10px;
     align-items: center;
   }
 
