@@ -510,7 +510,9 @@
       </div>
 
       <!-- gotthaiリンク -->
-      <a class="gotthai-link" href={currentWord.url} target="_blank" rel="noreferrer"> 🔗 ごったいで見る </a>
+      <div class="gotthai-wrap">
+        <a class="gotthai-link" href={currentWord.url} target="_blank" rel="noreferrer"> 🔗 ごったいで見る </a>
+      </div>
 
       <!-- 分かる／分からないボタン -->
       <div class="judge">
@@ -676,13 +678,18 @@
     color: #333;
   }
 
+  .gotthai-wrap {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
   .gotthai-link {
-    display: block;
+    display: inline-block;
     font-size: 12px;
     color: #999;
     text-decoration: none;
-    margin-bottom: 16px;
   }
+
   .gotthai-link:hover {
     color: #2a7ae2;
   }
