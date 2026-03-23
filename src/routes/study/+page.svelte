@@ -157,16 +157,18 @@
 
   async function markKnown() {
     const wordNo = currentWord.no;
-
-    // 今の正解回数を取得（なければ0）
     const currentCount = statuses[wordNo]?.reviewCount ?? 0;
     const newCount = currentCount + 1;
 
-    // 次回出題日を計算する
     const days = getNextInterval(newCount);
     const nextReview = new Date();
-    nextReview.setDate(nextReview.getDate() + days); // 今日 + days日後
+    nextReview.setDate(nextReview.getDate() + days);
 
+    // ✅ 「次に表示すべき単語」のIDを先に記憶しておく
+    const nextIndex = (filteredIndex + 1) % filteredWords.length;
+    const nextWordNo = filteredWords.length > 1 ? filteredWords[nextIndex].no : null;
+
+    // statuses を更新（リストが再計算される）
     statuses = {
       ...statuses,
       [wordNo]: {
@@ -177,22 +179,32 @@
       },
     };
 
+    // ✅ IDから新しいリスト上の位置を探して移動する
+    if (nextWordNo !== null) {
+      showMeaning = false;
+      showMemoPanel = false;
+      const newIndex = filteredWords.findIndex((w) => w.no === nextWordNo);
+      // 見つかればその位置へ、見つからなければ末尾に合わせる
+      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
+    }
+
     await saveStatus(wordNo, {
       status: "known",
       review_count: newCount,
       next_review_at: nextReview.toISOString(),
     });
-
-    if (filteredWords.length > 1) nextWord();
   }
 
   // 「知らない」ボタンを押したとき
   async function markUnknown() {
     const wordNo = currentWord.no;
 
-    // 明日また出題されるようにリセット
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + 1);
+
+    // ✅ 次の単語のIDを先に記憶
+    const nextIndex = (filteredIndex + 1) % filteredWords.length;
+    const nextWordNo = filteredWords.length > 1 ? filteredWords[nextIndex].no : null;
 
     statuses = {
       ...statuses,
@@ -204,13 +216,19 @@
       },
     };
 
+    // ✅ IDから位置を探して移動
+    if (nextWordNo !== null) {
+      showMeaning = false;
+      showMemoPanel = false;
+      const newIndex = filteredWords.findIndex((w) => w.no === nextWordNo);
+      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
+    }
+
     await saveStatus(wordNo, {
       status: "unknown",
       review_count: 0,
       next_review_at: nextReview.toISOString(),
     });
-
-    if (filteredWords.length > 1) nextWord();
   }
 
   // ☆ボタンを押したとき
