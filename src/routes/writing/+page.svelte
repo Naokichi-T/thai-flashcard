@@ -17,6 +17,9 @@
   let isCorrect = $state(false); // 正解かどうか
   let loading = $state(true);
   let error = $state("");
+  let memos = $state({});
+  let showMemoPanel = $state(false);
+  let currentMemo = $derived(memos[currentWord?.no] ?? "");
 
   const todayKey = new Date().toISOString().slice(0, 10);
   const todayLimit = 10;
@@ -68,7 +71,7 @@
       console.log("取得件数:", words.length); // 確認用
 
       // stage1の進捗を取得
-      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_pending").eq("stage", 1);
+      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_favorite, is_pending, review_count, next_review_at").eq("stage", 1);
 
       if (statusError) throw new Error(statusError.message);
 
@@ -76,10 +79,24 @@
       for (const row of statusData) {
         loaded[row.word_no] = {
           status: row.status,
+          isFavorite: row.is_favorite ?? false,
           isPending: row.is_pending ?? false,
+          reviewCount: row.review_count ?? 0,
+          nextReviewAt: row.next_review_at ?? null,
         };
       }
       statuses = loaded;
+
+      // メモを取得
+      const { data: memoData, error: memoError } = await supabase.from("word_memo").select("word_no, memo");
+
+      if (memoError) throw new Error(memoError.message);
+
+      const loadedMemos = {};
+      for (const row of memoData) {
+        loadedMemos[row.word_no] = row.memo;
+      }
+      memos = loadedMemos;
 
       loading = false;
     } catch (e) {
@@ -290,6 +307,43 @@
   function formatCount(n) {
     return n > 999 ? "999+" : n;
   }
+
+  // メモをSupabaseに保存する
+  async function saveMemo(wordNo, memoText) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    const { error } = await supabase.from("word_memo").upsert(
+      {
+        word_no: wordNo,
+        user_id: userId,
+        memo: memoText,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id, word_no" },
+    );
+
+    if (error) {
+      console.error("メモの保存に失敗:", error.message);
+    }
+  }
+
+  // ✏️ボタンを押したとき：メモパネルの開閉
+  function toggleMemoPanel() {
+    showMemoPanel = !showMemoPanel;
+  }
+
+  // メモの内容が変わったとき：状態を更新して保存
+  async function handleMemoInput(e) {
+    const wordNo = currentWord.no;
+    const text = e.target.value;
+    // 状態を更新
+    memos = { ...memos, [wordNo]: text };
+    // Supabaseに保存
+    await saveMemo(wordNo, text);
+  }
 </script>
 
 <!-- ============================================================
@@ -378,6 +432,7 @@
           {isFavorite ? "★" : "☆"}
         </button>
         <button class="pending-btn" class:active={isPending} onclick={togglePending}> 💤 </button>
+        <button class="memo-btn" class:active={currentMemo !== ""} onclick={toggleMemoPanel}> ✏️ </button>
       </div>
     </div>
 
@@ -440,6 +495,13 @@
       <button onclick={prevWord}>← 前へ</button>
       <button onclick={nextWord}>次へ →</button>
     </div>
+
+    <!-- メモパネル（✏️を押したら表示） -->
+    {#if showMemoPanel}
+      <div class="memo-panel">
+        <textarea class="memo-textarea" placeholder="語源・例文などをメモ..." value={currentMemo} oninput={handleMemoInput}></textarea>
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -780,5 +842,42 @@
 
   .pending-btn.active {
     opacity: 1;
+  }
+
+  /* メモボタン */
+  .memo-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0.3; /* メモなしは薄く */
+  }
+
+  .memo-btn:hover {
+    background: none;
+    opacity: 0.6;
+  }
+
+  .memo-btn.active {
+    opacity: 1; /* メモありは普通の濃さ */
+  }
+
+  /* メモ入力エリア */
+  .memo-panel {
+    margin-top: 16px;
+    text-align: left;
+  }
+
+  .memo-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: vertical; /* 縦方向にだけリサイズ可能 */
+    box-sizing: border-box;
+    font-family: inherit;
   }
 </style>
