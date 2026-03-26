@@ -299,7 +299,7 @@
   }
 
   // 今日の出題数（ここを変えるだけで問題数が変わる）
-  const todayLimit = 10;
+  const todayLimit = 20;
 
   // 表示対象の単語リスト（モードによって変わる）
   let filteredWords = $derived(
@@ -325,12 +325,15 @@
         // 保留中の単語だけ
         return words.filter((w) => statuses[w.no]?.isPending);
       } else if (mode === "review") {
-        // next_review_at が今日以前の「知ってる」単語だけ
+        // next_review_at が今日以前の単語だけ絞り込む
         const now = new Date();
-        return words.filter((w) => {
+        const reviewWords = words.filter((w) => {
           const next = statuses[w.no]?.nextReviewAt;
           return next && new Date(next) <= now;
         });
+        // 今日のシード値でシャッフルしてランダム順にする
+        const seed = parseInt(todayKey.replace(/-/g, ""));
+        return seededShuffle(reviewWords, seed);
       } else {
         // 全部（保留も含めて全単語を表示）
         return words;

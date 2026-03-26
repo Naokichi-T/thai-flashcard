@@ -25,7 +25,7 @@
 
   // 今日の日付（今日のN問用）
   const todayKey = new Date().toISOString().slice(0, 10);
-  const todayLimit = 10;
+  const todayLimit = 20;
 
   // ============================================================
   // シャッフル関数（study と同じ）
@@ -155,11 +155,15 @@
       } else if (mode === "pending") {
         return words.filter((w) => statuses[w.no]?.isPending);
       } else if (mode === "review") {
+        // next_review_at が今日以前の単語だけ絞り込む
         const now = new Date();
-        return words.filter((w) => {
+        const reviewWords = words.filter((w) => {
           const next = statuses[w.no]?.nextReviewAt;
           return next && new Date(next) <= now;
         });
+        // 今日のシード値でシャッフルしてランダム順にする
+        const seed = parseInt(todayKey.replace(/-/g, ""));
+        return seededShuffle(reviewWords, seed);
       } else {
         // 全部 = stage1で「知ってる」にした単語（reverseでの状態は問わない）
         return words.filter((w) => stage1Statuses[w.no]?.status === "known");
