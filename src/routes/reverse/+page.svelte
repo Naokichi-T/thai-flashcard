@@ -27,6 +27,16 @@
   const todayKey = new Date().toISOString().slice(0, 10);
   const todayLimit = 20;
 
+  const todayAnswerKey = `todayAnswer_stage2_${todayKey}`;
+  let todayAnswerCount = $state(
+    (() => {
+      // ✅ ブラウザ上でのみlocalStorageを読む
+      if (typeof window === "undefined") return 0;
+      const saved = localStorage.getItem(todayAnswerKey);
+      return saved ? parseInt(saved) : 0;
+    })(),
+  );
+
   // ============================================================
   // シャッフル関数（study と同じ）
   // ============================================================
@@ -276,6 +286,17 @@
       filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
     }
 
+    todayAnswerCount += 1;
+    // ✅ ブラウザ上でのみlocalStorageに保存する
+    if (typeof window !== "undefined") {
+      localStorage.setItem(todayAnswerKey, todayAnswerCount);
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("todayAnswer_") && key !== todayAnswerKey) {
+          localStorage.removeItem(key);
+        }
+      }
+    }
+
     await saveStatus(wordNo, {
       status: "known",
       review_count: newCount,
@@ -312,6 +333,17 @@
     if (nextWordNo !== null) {
       const newIndex = filteredWords.findIndex((w) => w.no === nextWordNo);
       filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
+    }
+
+    todayAnswerCount += 1;
+    // ✅ ブラウザ上でのみlocalStorageに保存する
+    if (typeof window !== "undefined") {
+      localStorage.setItem(todayAnswerKey, todayAnswerCount);
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("todayAnswer_") && key !== todayAnswerKey) {
+          localStorage.removeItem(key);
+        }
+      }
     }
 
     await saveStatus(wordNo, {
@@ -495,6 +527,10 @@
     <!-- 番号・お気に入り・保留ボタン -->
     <div class="top-row">
       <p class="counter">{filteredIndex + 1} / {filteredWords.length}</p>
+      <!-- 未回答モードのときだけ本日回答数を中央に表示 -->
+      {#if mode === "unanswered"}
+        <p class="today-count">本日回答: {todayAnswerCount}</p>
+      {/if}
       <div class="top-buttons">
         <button class="fav-btn" onclick={toggleFavorite}>
           {isFavorite ? "★" : "☆"}
@@ -912,5 +948,11 @@
     font-size: 14px;
     box-sizing: border-box;
     font-family: inherit;
+  }
+
+  /* 本日回答数 */
+  .today-count {
+    font-size: 13px;
+    color: #999;
   }
 </style>
