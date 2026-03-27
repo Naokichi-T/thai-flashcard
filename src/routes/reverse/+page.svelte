@@ -567,6 +567,7 @@
       <button onclick={toggleAnswer}>タイ語を見る</button>
     {:else}
       <h1 class="thai">{currentWord.thai}</h1>
+      <p class="reading-hint">{currentWord.reading}</p>
       <div class="word-meta">
         <span>頻出 {currentWord.frequency ?? "-"}</span>
         <span>格式 {currentWord.formality ?? "-"}</span>
