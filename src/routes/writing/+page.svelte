@@ -304,6 +304,11 @@
       filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
     }
 
+    // ✅ 次の単語の入力欄に自動でカーソルを当てる
+    setTimeout(() => {
+      document.querySelector(".thai-input")?.focus();
+    }, 0);
+
     todayAnswerCount += 1;
     // ✅ ブラウザ上でのみlocalStorageに保存する
     if (typeof window !== "undefined") {
@@ -351,6 +356,11 @@
       const newIndex = filteredWords.findIndex((w) => w.no === nextWordNo);
       filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
     }
+
+    // ✅ 次の単語の入力欄に自動でカーソルを当てる
+    setTimeout(() => {
+      document.querySelector(".thai-input")?.focus();
+    }, 0);
 
     todayAnswerCount += 1;
     // ✅ ブラウザ上でのみlocalStorageに保存する
