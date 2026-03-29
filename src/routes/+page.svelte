@@ -81,6 +81,7 @@
     flex-direction: column;
     gap: 16px;
     width: 300px;
+    padding-bottom: 40px;
   }
 
   /* モードカード */
