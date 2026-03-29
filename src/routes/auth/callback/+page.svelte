@@ -13,19 +13,24 @@
   let ready = $state(false); // セッションが確認できたら表示する
 
   onMount(async () => {
-    // URLにエラーが含まれている場合はエラーメッセージを表示する
-    // 例：リンクの有効期限切れ（otp_expired）など
+    // URLのハッシュ（#以降）のパラメータを取得する
+    // パスワードリセットメールのリンクには #access_token=... が含まれている
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
+
+    // エラーが含まれている場合はエラーメッセージを表示して終了
     if (hashParams.get("error")) {
       error = "リンクが無効か期限切れです。もう一度パスワードリセットを行ってください。";
       return;
     }
 
-    // URLのハッシュ（#以降）からトークンを取得してセッションを確立する
-    // パスワードリセットメールのリンクにはURLにトークンが含まれている
-    const hash = window.location.hash;
-    if (hash) {
-      const { error: sessionError } = await supabase.auth.exchangeCodeForSession(window.location.href);
+    // access_tokenが含まれている場合はセッションを確立する
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    if (accessToken && refreshToken) {
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
       if (sessionError) {
         error = "リンクが無効か期限切れです。もう一度お試しください。";
         return;
