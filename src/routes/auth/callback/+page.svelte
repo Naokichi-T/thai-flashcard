@@ -13,6 +13,14 @@
   let ready = $state(false); // セッションが確認できたら表示する
 
   onMount(async () => {
+    // URLにエラーが含まれている場合はエラーメッセージを表示する
+    // 例：リンクの有効期限切れ（otp_expired）など
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    if (hashParams.get("error")) {
+      error = "リンクが無効か期限切れです。もう一度パスワードリセットを行ってください。";
+      return;
+    }
+
     // URLのハッシュ（#以降）からトークンを取得してセッションを確立する
     // パスワードリセットメールのリンクにはURLにトークンが含まれている
     const hash = window.location.hash;
