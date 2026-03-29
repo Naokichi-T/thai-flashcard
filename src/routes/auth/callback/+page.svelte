@@ -13,6 +13,17 @@
   let ready = $state(false); // セッションが確認できたら表示する
 
   onMount(async () => {
+    // URLのハッシュ（#以降）からトークンを取得してセッションを確立する
+    // パスワードリセットメールのリンクにはURLにトークンが含まれている
+    const hash = window.location.hash;
+    if (hash) {
+      const { error: sessionError } = await supabase.auth.exchangeCodeForSession(window.location.href);
+      if (sessionError) {
+        error = "リンクが無効か期限切れです。もう一度お試しください。";
+        return;
+      }
+    }
+
     // セッションが有効かどうか確認する
     const {
       data: { session },
