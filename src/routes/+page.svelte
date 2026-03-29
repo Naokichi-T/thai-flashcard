@@ -50,6 +50,13 @@
       <span class="name">検索</span>
       <span class="desc">タイ語・日本語で単語を検索する</span>
     </a>
+
+    <!-- マニュアル（別タブで開く） -->
+    <a href="/manual" class="mode-card" target="_blank" rel="noreferrer">
+      <span class="icon">📖</span>
+      <span class="name">マニュアル</span>
+      <span class="desc">アプリの使い方を確認する</span>
+    </a>
   </div>
 </div>
 
