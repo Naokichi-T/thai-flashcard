@@ -64,8 +64,9 @@
     while (true) {
       const { data, error } = await supabase
         .from("words")
-        .select("no, url, thai, reading, meaning, frequency, formality")
-        .order("no", { ascending: true })
+        .select("no, url, url_no, thai, reading, meaning, frequency, formality")
+        .order("frequency", { ascending: false })
+        .order("url_no", { ascending: true })
         .range(from, from + batchSize - 1);
 
       if (error) throw new Error(error.message);

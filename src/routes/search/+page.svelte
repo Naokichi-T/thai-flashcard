@@ -62,9 +62,10 @@
     // ilike：大文字小文字を区別しない部分一致
     const { data: wordResults, error: wordError } = await supabase
       .from("words")
-      .select("no, thai, reading, meaning, frequency, formality")
+      .select("no, url_no, thai, reading, meaning, frequency, formality")
       .or(`thai.ilike.%${query}%,meaning.ilike.%${query}%`)
-      .order("no", { ascending: true });
+      .order("frequency", { ascending: false })
+      .order("url_no", { ascending: true });
 
     if (wordError) {
       console.error("検索エラー:", wordError.message);
@@ -107,7 +108,7 @@
       <!-- 検索結果1件 -->
       {#each results as word}
         <li class="result-item">
-          <span class="result-no">No.{word.no}</span>
+          <!-- <span class="result-no">No.{word.no}</span> -->
           <span class="result-thai">{word.thai}</span>
           <span class="result-reading">{word.reading}</span>
           <span class="result-meaning">{word.meaning}</span>
