@@ -184,6 +184,10 @@
 
   let filteredIndex = $state(0);
 
+  let snapshottedWords = $state([]);
+
+  let displayWords = $derived(snapshottedWords.length > 0 ? snapshottedWords : filteredWords);
+
   $effect(() => {
     mode;
     filteredIndex = 0;
@@ -191,11 +195,41 @@
     showReading = false;
   });
 
-  let currentWord = $derived(filteredWords[filteredIndex]);
+  let currentWord = $derived(displayWords[filteredIndex]);
 
   // ============================================================
   // ボタンの処理
   // ============================================================
+
+  /**
+   * モードを切り替えてスナップショットを取る関数
+   * 復習・今日のN問・未回答は切り替え時にリストを固定する
+   */
+  function switchMode(newMode) {
+    mode = newMode;
+
+    if (newMode === "unanswered") {
+      // 未回答：stage1で「知ってる」かつreverseでまだ回答していない単語
+      snapshottedWords = words.filter((w) => stage1Statuses[w.no]?.status === "known" && !statuses[w.no]?.status && !statuses[w.no]?.isPending);
+    } else if (newMode === "today") {
+      // 今日のN問：知らない単語からシャッフルしてN件
+      const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
+      const seed = parseInt(todayKey.replace(/-/g, ""));
+      snapshottedWords = seededShuffle(unknowns, seed).slice(0, todayLimit);
+    } else if (newMode === "review") {
+      // 復習：next_review_atが今日以前の単語をシャッフル
+      const now = new Date();
+      const reviewWords = words.filter((w) => {
+        const next = statuses[w.no]?.nextReviewAt;
+        return next && new Date(next) <= now;
+      });
+      const seed = parseInt(todayKey.replace(/-/g, ""));
+      snapshottedWords = seededShuffle(reviewWords, seed);
+    } else {
+      snapshottedWords = [];
+    }
+  }
+
   function toggleAnswer() {
     showAnswer = !showAnswer;
   }
@@ -204,14 +238,14 @@
     showAnswer = false;
     showReading = false;
     showMemoPanel = false;
-    filteredIndex = (filteredIndex + 1) % filteredWords.length;
+    filteredIndex = (filteredIndex + 1) % displayWords.length;
   }
 
   function prevWord() {
     showAnswer = false;
     showReading = false;
     showMemoPanel = false;
-    filteredIndex = (filteredIndex - 1 + filteredWords.length) % filteredWords.length;
+    filteredIndex = (filteredIndex - 1 + displayWords.length) % displayWords.length;
   }
 
   async function saveStatus(wordNo, fields) {
@@ -261,11 +295,9 @@
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + days);
 
-    // ✅ 次の単語のIDを先に記憶
-    const nextIndex = (filteredIndex + 1) % filteredWords.length;
-    const nextWordNo = filteredWords.length > 1 ? filteredWords[nextIndex].no : null;
+    const nextIndex = (filteredIndex + 1) % displayWords.length;
+    const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
 
-    // ✅ 表示をリセット（答えが見えないようにする）
     showAnswer = false;
     showReading = false;
     showMemoPanel = false;
@@ -281,14 +313,12 @@
       },
     };
 
-    // ✅ IDから新しい位置を探して移動
     if (nextWordNo !== null) {
-      const newIndex = filteredWords.findIndex((w) => w.no === nextWordNo);
-      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
+      const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
+      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
     }
 
     todayAnswerCount += 1;
-    // ✅ ブラウザ上でのみlocalStorageに保存する
     if (typeof window !== "undefined") {
       localStorage.setItem(todayAnswerKey, todayAnswerCount);
       for (const key of Object.keys(localStorage)) {
@@ -311,11 +341,9 @@
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + 1);
 
-    // ✅ 次の単語のIDを先に記憶
-    const nextIndex = (filteredIndex + 1) % filteredWords.length;
-    const nextWordNo = filteredWords.length > 1 ? filteredWords[nextIndex].no : null;
+    const nextIndex = (filteredIndex + 1) % displayWords.length;
+    const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
 
-    // ✅ 表示をリセット
     showAnswer = false;
     showReading = false;
     showMemoPanel = false;
@@ -330,14 +358,12 @@
       },
     };
 
-    // ✅ IDから位置を探して移動
     if (nextWordNo !== null) {
-      const newIndex = filteredWords.findIndex((w) => w.no === nextWordNo);
-      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
+      const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
+      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
     }
 
     todayAnswerCount += 1;
-    // ✅ ブラウザ上でのみlocalStorageに保存する
     if (typeof window !== "undefined") {
       localStorage.setItem(todayAnswerKey, todayAnswerCount);
       for (const key of Object.keys(localStorage)) {
@@ -490,7 +516,7 @@
     <div class="mode-switch">
       <!-- 上段：よく使う3つ -->
       <div class="mode-primary">
-        <button class:active={mode === "review"} onclick={() => (mode = "review")}>
+        <button class:active={mode === "review"} onclick={() => switchMode("review")}>
           🔁 復習<span class="count"
             >{formatCount(
               words.filter((w) => {
@@ -500,10 +526,10 @@
             )}</span
           >
         </button>
-        <button class:active={mode === "today"} onclick={() => (mode = "today")}>
+        <button class:active={mode === "today"} onclick={() => switchMode("today")}>
           📅 今日の{todayLimit}問<span class="count">{formatCount(Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit))}</span>
         </button>
-        <button class:active={mode === "unanswered"} onclick={() => (mode = "unanswered")}>
+        <button class:active={mode === "unanswered"} onclick={() => switchMode("unanswered")}>
           ❓ 未回答<span class="count">{formatCount(words.filter((w) => stage1Statuses[w.no]?.status === "known" && !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span>
         </button>
       </div>
@@ -527,7 +553,7 @@
 
     <!-- 番号・お気に入り・保留ボタン -->
     <div class="top-row">
-      <p class="counter">{filteredIndex + 1} / {filteredWords.length}</p>
+      <p class="counter">{filteredIndex + 1} / {displayWords.length}</p>
       <!-- 未回答モードのときだけ本日回答数を中央に表示 -->
       {#if mode === "unanswered"}
         <p class="today-count">本日回答: {todayAnswerCount}</p>

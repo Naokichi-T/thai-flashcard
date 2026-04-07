@@ -165,9 +165,9 @@
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + days);
 
-    // ✅ 「次に表示すべき単語」のIDを先に記憶しておく
-    const nextIndex = (filteredIndex + 1) % filteredWords.length;
-    const nextWordNo = filteredWords.length > 1 ? filteredWords[nextIndex].no : null;
+    // filteredWords → displayWords
+    const nextIndex = (filteredIndex + 1) % displayWords.length;
+    const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
 
     // statuses を更新（リストが再計算される）
     statuses = {
@@ -184,9 +184,9 @@
     if (nextWordNo !== null) {
       showMeaning = false;
       showMemoPanel = false;
-      const newIndex = filteredWords.findIndex((w) => w.no === nextWordNo);
-      // 見つかればその位置へ、見つからなければ末尾に合わせる
-      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
+      // filteredWords → displayWords
+      const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
+      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
     }
 
     todayAnswerCount += 1;
@@ -214,9 +214,9 @@
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + 1);
 
-    // ✅ 次の単語のIDを先に記憶
-    const nextIndex = (filteredIndex + 1) % filteredWords.length;
-    const nextWordNo = filteredWords.length > 1 ? filteredWords[nextIndex].no : null;
+    // 変更：filteredWords → displayWords
+    const nextIndex = (filteredIndex + 1) % displayWords.length;
+    const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
 
     statuses = {
       ...statuses,
@@ -232,8 +232,9 @@
     if (nextWordNo !== null) {
       showMeaning = false;
       showMemoPanel = false;
-      const newIndex = filteredWords.findIndex((w) => w.no === nextWordNo);
-      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, filteredWords.length - 1);
+      // ★ 変更：filteredWords → displayWords
+      const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
+      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
     }
 
     todayAnswerCount += 1;
@@ -290,6 +291,24 @@
   // ============================================================
   // ボタンの処理
   // ============================================================
+
+  /**
+   * モードを切り替えてスナップショットを取る関数
+   * 復習・今日のN問・未回答は切り替え時にリストを固定する
+   */
+  function switchMode(newMode) {
+    mode = newMode;
+    // 固定が必要なモードのときはリストをコピーして保存する
+    if (newMode === "review" || newMode === "today" || newMode === "unanswered") {
+      // filteredWords は $derived なので、mode を変えた直後はまだ古い値
+      // setTimeout で1サイクル待ってから取得する
+      setTimeout(() => {
+        snapshottedWords = [...filteredWords];
+      }, 0);
+    } else {
+      snapshottedWords = [];
+    }
+  }
 
   function toggleMeaning() {
     showMeaning = !showMeaning;
@@ -377,6 +396,14 @@
   // filteredWords の中での現在位置
   let filteredIndex = $state(0);
 
+  // ★ 復習・今日のN問・未回答モード用の固定リスト
+  // モードに入ったときのリストを保存して、前へ戻れるようにする
+  let snapshottedWords = $state([]);
+
+  // ★ 実際に表示に使うリスト
+  // 固定が必要なモードはスナップショット、それ以外は通常のfilteredWords
+  let displayWords = $derived(snapshottedWords.length > 0 ? snapshottedWords : filteredWords);
+
   // モードが切り替わったらインデックスをリセット
   $effect(() => {
     mode; // mode を参照することで、変化を検知する
@@ -384,20 +411,21 @@
     showMeaning = false;
   });
 
-  // 今表示している単語（filteredWords ベース）
-  let currentWord = $derived(filteredWords[filteredIndex]);
+  // filteredWords → displayWords に変更
+  let currentWord = $derived(displayWords[filteredIndex]);
 
-  // 次へ・前へも filteredWords ベースに変更
   function nextWord() {
     showMeaning = false;
     showMemoPanel = false;
-    filteredIndex = (filteredIndex + 1) % filteredWords.length;
+    // filteredWords → displayWords
+    filteredIndex = (filteredIndex + 1) % displayWords.length;
   }
 
   function prevWord() {
     showMeaning = false;
     showMemoPanel = false;
-    filteredIndex = (filteredIndex - 1 + filteredWords.length) % filteredWords.length;
+    // filteredWords → displayWords
+    filteredIndex = (filteredIndex - 1 + displayWords.length) % displayWords.length;
   }
 
   // 999以上は「999+」と表示する
@@ -491,7 +519,7 @@
     <div class="mode-switch">
       <!-- 上段：よく使う3つ -->
       <div class="mode-primary">
-        <button class:active={mode === "review"} onclick={() => (mode = "review")}>
+        <button class:active={mode === "review"} onclick={() => switchMode("review")}>
           🔁 復習<span class="count"
             >{formatCount(
               words.filter((w) => {
@@ -501,10 +529,10 @@
             )}</span
           >
         </button>
-        <button class:active={mode === "today"} onclick={() => (mode = "today")}>
+        <button class:active={mode === "today"} onclick={() => switchMode("today")}>
           📅 今日の{todayLimit}問<span class="count">{formatCount(Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit))}</span>
         </button>
-        <button class:active={mode === "unanswered"} onclick={() => (mode = "unanswered")}>
+        <button class:active={mode === "unanswered"} onclick={() => switchMode("unanswered")}>
           ❓ 未回答<span class="count">{formatCount(words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span>
         </button>
       </div>
@@ -526,7 +554,8 @@
     </div>
     <!-- 番号・お気に入り・保留ボタン -->
     <div class="top-row">
-      <p class="counter">{filteredIndex + 1} / {filteredWords.length}</p>
+      <!-- 変更：filteredWords → displayWords -->
+      <p class="counter">{filteredIndex + 1} / {displayWords.length}</p>
       <!-- 未回答モードのときだけ本日回答数を中央に表示 -->
       {#if mode === "unanswered"}
         <p class="today-count">本日回答: {todayAnswerCount}</p>
