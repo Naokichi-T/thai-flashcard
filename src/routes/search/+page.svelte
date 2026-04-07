@@ -222,11 +222,6 @@
     gap: 2px;
   }
 
-  .result-no {
-    font-size: 11px;
-    color: #aaa;
-  }
-
   .result-thai {
     font-size: 20px;
     color: #333;
