@@ -322,6 +322,11 @@
 
     answeredNos = new Set([...answeredNos, wordNo]);
 
+    if (snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length) {
+      snapshottedWords = [];
+      answeredNos = new Set();
+    }
+
     const isNowMemorized = newCount >= MEMORIZED_COUNT;
 
     // statuses を更新（リストが再計算される）
@@ -392,6 +397,11 @@
     showMemoPanel = false;
 
     answeredNos = new Set([...answeredNos, wordNo]);
+
+    if (snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length) {
+      snapshottedWords = [];
+      answeredNos = new Set();
+    }
 
     statuses = {
       ...statuses,

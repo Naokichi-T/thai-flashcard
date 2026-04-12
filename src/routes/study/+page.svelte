@@ -179,6 +179,12 @@
     // 回答済みセットに追加（件数を1減らすため）
     answeredNos = new Set([...answeredNos, wordNo]);
 
+    // 全問回答し終わったらスナップショットをクリアして終了画面に切り替える
+    if (snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length) {
+      snapshottedWords = [];
+      answeredNos = new Set();
+    }
+
     // 7回連続正解で暗記済みにする
     const isNowMemorized = newCount >= MEMORIZED_COUNT;
 
@@ -249,6 +255,12 @@
 
     // 回答済みセットに追加（件数を1減らすため）
     answeredNos = new Set([...answeredNos, wordNo]);
+
+    // 全問回答し終わったらスナップショットをクリアして終了画面に切り替える
+    if (snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length) {
+      snapshottedWords = [];
+      answeredNos = new Set();
+    }
 
     statuses = {
       ...statuses,
