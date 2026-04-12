@@ -304,12 +304,17 @@
    */
   function switchMode(newMode) {
     mode = newMode;
-    // ✅ モードを切り替えたら回答済みセットをリセット
+    // モードを切り替えたら回答済みセットをリセット
     answeredNos = new Set();
 
     if (newMode === "unanswered") {
       // 未回答：まだ回答していない単語
       snapshottedWords = words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending);
+      // 今日初めて未回答モードに入ったときだけ初期件数を保存する
+      if (unansweredStartCount === null && typeof window !== "undefined") {
+        unansweredStartCount = snapshottedWords.length;
+        localStorage.setItem(unansweredStartKey, unansweredStartCount);
+      }
     } else if (newMode === "today") {
       // 今日のN問：知らない単語からシャッフルしてN件
       const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
@@ -421,6 +426,17 @@
 
   // スナップショット内で回答済みの単語番号を管理するセット
   let answeredNos = $state(new Set());
+
+  // 未回答モードに入ったときの初期件数（LocalStorageから復元）
+  // キーに日付とステージを含めることで、日付が変わると自動リセットされる
+  const unansweredStartKey = `unansweredStart_stage1_${todayKey}`;
+  let unansweredStartCount = $state(
+    (() => {
+      if (typeof window === "undefined") return null;
+      const saved = localStorage.getItem(unansweredStartKey);
+      return saved ? parseInt(saved) : null;
+    })(),
+  );
 
   // ★ 実際に表示に使うリスト
   // 固定が必要なモードはスナップショット、それ以外は通常のfilteredWords
@@ -590,7 +606,9 @@
       <p class="counter">{filteredIndex + 1} / {displayWords.length}</p>
       <!-- 未回答モードのときだけ本日回答数を中央に表示 -->
       {#if mode === "unanswered"}
-        <p class="today-count">本日回答: {todayAnswerCount}</p>
+        <p class="today-count">
+          本日回答: {unansweredStartCount !== null ? unansweredStartCount - (snapshottedWords.length - answeredNos.size) : answeredNos.size}
+        </p>
       {/if}
       <div class="top-buttons">
         <button class="fav-btn" onclick={toggleFavorite}>

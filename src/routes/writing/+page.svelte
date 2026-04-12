@@ -186,6 +186,14 @@
   let filteredIndex = $state(0);
   let snapshottedWords = $state([]);
   let answeredNos = $state(new Set());
+  const unansweredStartKey = `unansweredStart_stage3_${todayKey}`;
+  let unansweredStartCount = $state(
+    (() => {
+      if (typeof window === "undefined") return null;
+      const saved = localStorage.getItem(unansweredStartKey);
+      return saved ? parseInt(saved) : null;
+    })(),
+  );
   let displayWords = $derived(snapshottedWords.length > 0 ? snapshottedWords : filteredWords);
 
   $effect(() => {
@@ -211,6 +219,10 @@
     if (newMode === "unanswered") {
       // 未回答：stage2で「知ってる」かつwritingでまだ回答していない単語
       snapshottedWords = words.filter((w) => stage1Statuses[w.no]?.status === "known" && !statuses[w.no]?.status && !statuses[w.no]?.isPending);
+      if (unansweredStartCount === null && typeof window !== "undefined") {
+        unansweredStartCount = snapshottedWords.length;
+        localStorage.setItem(unansweredStartKey, unansweredStartCount);
+      }
     } else if (newMode === "today") {
       // 今日のN問：知らない単語からシャッフルしてN件
       const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
@@ -596,7 +608,9 @@
       <p class="counter">{filteredIndex + 1} / {displayWords.length}</p>
       <!-- 未回答モードのときだけ本日回答数を中央に表示 -->
       {#if mode === "unanswered"}
-        <p class="today-count">本日回答: {todayAnswerCount}</p>
+        <p class="today-count">
+          本日回答: {unansweredStartCount !== null ? unansweredStartCount - (snapshottedWords.length - answeredNos.size) : answeredNos.size}
+        </p>
       {/if}
       <div class="top-buttons">
         <button class="fav-btn" onclick={toggleFavorite}>
