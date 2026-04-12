@@ -443,8 +443,7 @@
       ...statuses,
       [wordNo]: { ...statuses[wordNo], isFavorite: newVal },
     };
-    const { error: sbError } = await supabase.from("word_status").upsert({ word_no: wordNo, stage: 2, is_favorite: newVal, updated_at: new Date().toISOString() }, { onConflict: "word_no, stage" });
-    if (sbError) console.error("保存失敗:", sbError.message);
+    await saveStatus(wordNo, { is_favorite: newVal });
   }
 
   // 今の単語がお気に入りかどうか
