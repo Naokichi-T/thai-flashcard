@@ -47,15 +47,15 @@
       words = await fetchAllWords();
       console.log("取得件数:", words.length); // 確認用
 
-      // stage1の進捗を取得
-      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_pending").eq("stage", 1);
+      // stage1〜3の進捗をまとめて取得
+      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, stage, is_pending").in("stage", [1, 2, 3]);
 
       if (statusError) throw new Error(statusError.message);
 
-      const loaded = {};
+      // stageごとに分けて格納する
+      const loaded = { 1: {}, 2: {}, 3: {} };
       for (const row of statusData) {
-        loaded[row.word_no] = {
-          status: row.status,
+        loaded[row.stage][row.word_no] = {
           isPending: row.is_pending ?? false,
         };
       }
@@ -71,7 +71,8 @@
   // ============================================================
   // 表示中のstageの保留単語リスト
   // ============================================================
-  let pendingWords = $derived(words.filter((w) => statuses[activeStage]?.[w.no]));
+  // isPending が true の単語だけ表示する
+  let pendingWords = $derived(words.filter((w) => statuses[activeStage]?.[w.no]?.isPending === true));
 
   // ============================================================
   // 保留を解除する
@@ -82,7 +83,7 @@
       ...statuses,
       [activeStage]: {
         ...statuses[activeStage],
-        [wordNo]: false,
+        [wordNo]: { isPending: false },
       },
     };
 
@@ -94,9 +95,9 @@
 
   // stageごとの保留件数（タブに表示）
   let countByStage = $derived({
-    1: words.filter((w) => statuses[1]?.[w.no]).length,
-    2: words.filter((w) => statuses[2]?.[w.no]).length,
-    3: words.filter((w) => statuses[3]?.[w.no]).length,
+    1: words.filter((w) => statuses[1]?.[w.no]?.isPending === true).length,
+    2: words.filter((w) => statuses[2]?.[w.no]?.isPending === true).length,
+    3: words.filter((w) => statuses[3]?.[w.no]?.isPending === true).length,
   });
 </script>
 
