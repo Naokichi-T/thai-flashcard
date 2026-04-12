@@ -47,17 +47,30 @@
       words = await fetchAllWords();
       console.log("取得件数:", words.length); // 確認用
 
-      // stage1〜3の進捗をまとめて取得
-      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, stage, is_pending").in("stage", [1, 2, 3]);
-
-      if (statusError) throw new Error(statusError.message);
-
-      // stageごとに分けて格納する
+      // stage1〜3の進捗をページネーションで全件取得
       const loaded = { 1: {}, 2: {}, 3: {} };
-      for (const row of statusData) {
-        loaded[row.stage][row.word_no] = {
-          isPending: row.is_pending ?? false,
-        };
+      let statusFrom = 0;
+      const statusBatchSize = 1000;
+
+      while (true) {
+        const { data: statusData, error: statusError } = await supabase
+          .from("word_status")
+          .select("word_no, stage, is_pending")
+          .in("stage", [1, 2, 3])
+          .range(statusFrom, statusFrom + statusBatchSize - 1);
+
+        if (statusError) throw new Error(statusError.message);
+
+        // stageごとに分けて格納する
+        // ✅ word_no を数値に変換してキーにする
+        for (const row of statusData) {
+          loaded[row.stage][Number(row.word_no)] = {
+            isPending: row.is_pending ?? false,
+          };
+        }
+
+        if (statusData.length < statusBatchSize) break;
+        statusFrom += statusBatchSize;
       }
       statuses = loaded;
 
