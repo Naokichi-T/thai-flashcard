@@ -169,6 +169,9 @@
     const nextIndex = (filteredIndex + 1) % displayWords.length;
     const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
 
+    // 回答済みセットに追加（件数を1減らすため）
+    answeredNos = new Set([...answeredNos, wordNo]);
+
     // statuses を更新（リストが再計算される）
     statuses = {
       ...statuses,
@@ -217,6 +220,9 @@
     // 変更：filteredWords → displayWords
     const nextIndex = (filteredIndex + 1) % displayWords.length;
     const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
+
+    // 回答済みセットに追加（件数を1減らすため）
+    answeredNos = new Set([...answeredNos, wordNo]);
 
     statuses = {
       ...statuses,
@@ -298,13 +304,26 @@
    */
   function switchMode(newMode) {
     mode = newMode;
-    // 固定が必要なモードのときはリストをコピーして保存する
-    if (newMode === "review" || newMode === "today" || newMode === "unanswered") {
-      // filteredWords は $derived なので、mode を変えた直後はまだ古い値
-      // setTimeout で1サイクル待ってから取得する
-      setTimeout(() => {
-        snapshottedWords = [...filteredWords];
-      }, 0);
+    // ✅ モードを切り替えたら回答済みセットをリセット
+    answeredNos = new Set();
+
+    if (newMode === "unanswered") {
+      // 未回答：まだ回答していない単語
+      snapshottedWords = words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending);
+    } else if (newMode === "today") {
+      // 今日のN問：知らない単語からシャッフルしてN件
+      const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
+      const seed = parseInt(todayKey.replace(/-/g, ""));
+      snapshottedWords = seededShuffle(unknowns, seed).slice(0, todayLimit);
+    } else if (newMode === "review") {
+      // 復習：next_review_atが今日以前の単語をシャッフル
+      const now = new Date();
+      const reviewWords = words.filter((w) => {
+        const next = statuses[w.no]?.nextReviewAt;
+        return next && new Date(next) <= now;
+      });
+      const seed = parseInt(todayKey.replace(/-/g, ""));
+      snapshottedWords = seededShuffle(reviewWords, seed);
     } else {
       snapshottedWords = [];
     }
@@ -399,6 +418,9 @@
   // ★ 復習・今日のN問・未回答モード用の固定リスト
   // モードに入ったときのリストを保存して、前へ戻れるようにする
   let snapshottedWords = $state([]);
+
+  // スナップショット内で回答済みの単語番号を管理するセット
+  let answeredNos = $state(new Set());
 
   // ★ 実際に表示に使うリスト
   // 固定が必要なモードはスナップショット、それ以外は通常のfilteredWords
@@ -522,18 +544,28 @@
         <button class:active={mode === "review"} onclick={() => switchMode("review")}>
           🔁 復習<span class="count"
             >{formatCount(
-              words.filter((w) => {
-                const next = statuses[w.no]?.nextReviewAt;
-                return next && new Date(next) <= new Date();
-              }).length,
+              mode === "review"
+                ? Math.max(snapshottedWords.length - answeredNos.size, 0)
+                : words.filter((w) => {
+                    const next = statuses[w.no]?.nextReviewAt;
+                    return next && new Date(next) <= new Date();
+                  }).length,
             )}</span
           >
         </button>
         <button class:active={mode === "today"} onclick={() => switchMode("today")}>
-          📅 今日の{todayLimit}問<span class="count">{formatCount(Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit))}</span>
+          📅 今日の{todayLimit}問<span class="count"
+            >{formatCount(
+              mode === "today"
+                ? Math.max(snapshottedWords.length - answeredNos.size, 0)
+                : Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit),
+            )}</span
+          >
         </button>
         <button class:active={mode === "unanswered"} onclick={() => switchMode("unanswered")}>
-          ❓ 未回答<span class="count">{formatCount(words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span>
+          ❓ 未回答<span class="count"
+            >{formatCount(mode === "unanswered" ? Math.max(snapshottedWords.length - answeredNos.size, 0) : words.filter((w) => !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span
+          >
         </button>
       </div>
       <!-- 下段：サブ4つ -->

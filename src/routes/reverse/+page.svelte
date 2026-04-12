@@ -186,6 +186,8 @@
 
   let snapshottedWords = $state([]);
 
+  let answeredNos = $state(new Set());
+
   let displayWords = $derived(snapshottedWords.length > 0 ? snapshottedWords : filteredWords);
 
   $effect(() => {
@@ -207,6 +209,8 @@
    */
   function switchMode(newMode) {
     mode = newMode;
+
+    answeredNos = new Set();
 
     if (newMode === "unanswered") {
       // 未回答：stage1で「知ってる」かつreverseでまだ回答していない単語
@@ -302,6 +306,8 @@
     showReading = false;
     showMemoPanel = false;
 
+    answeredNos = new Set([...answeredNos, wordNo]);
+
     // statuses を更新（リストが再計算される）
     statuses = {
       ...statuses,
@@ -347,6 +353,8 @@
     showAnswer = false;
     showReading = false;
     showMemoPanel = false;
+
+    answeredNos = new Set([...answeredNos, wordNo]);
 
     statuses = {
       ...statuses,
@@ -519,18 +527,32 @@
         <button class:active={mode === "review"} onclick={() => switchMode("review")}>
           🔁 復習<span class="count"
             >{formatCount(
-              words.filter((w) => {
-                const next = statuses[w.no]?.nextReviewAt;
-                return next && new Date(next) <= new Date();
-              }).length,
+              mode === "review"
+                ? Math.max(snapshottedWords.length - answeredNos.size, 0)
+                : words.filter((w) => {
+                    const next = statuses[w.no]?.nextReviewAt;
+                    return next && new Date(next) <= new Date();
+                  }).length,
             )}</span
           >
         </button>
         <button class:active={mode === "today"} onclick={() => switchMode("today")}>
-          📅 今日の{todayLimit}問<span class="count">{formatCount(Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit))}</span>
+          📅 今日の{todayLimit}問<span class="count"
+            >{formatCount(
+              mode === "today"
+                ? Math.max(snapshottedWords.length - answeredNos.size, 0)
+                : Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit),
+            )}</span
+          >
         </button>
         <button class:active={mode === "unanswered"} onclick={() => switchMode("unanswered")}>
-          ❓ 未回答<span class="count">{formatCount(words.filter((w) => stage1Statuses[w.no]?.status === "known" && !statuses[w.no]?.status && !statuses[w.no]?.isPending).length)}</span>
+          ❓ 未回答<span class="count"
+            >{formatCount(
+              mode === "unanswered"
+                ? Math.max(snapshottedWords.length - answeredNos.size, 0)
+                : words.filter((w) => stage1Statuses[w.no]?.status === "known" && !statuses[w.no]?.status && !statuses[w.no]?.isPending).length,
+            )}</span
+          >
         </button>
       </div>
 
