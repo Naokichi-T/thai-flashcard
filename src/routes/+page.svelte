@@ -37,6 +37,13 @@
       <span class="desc">頻出度別の学習進捗を確認する</span>
     </a>
 
+    <!-- 暗記済み一覧 -->
+    <a href="/memorized" class="mode-card">
+      <span class="icon">🎓</span>
+      <span class="name">暗記済み一覧</span>
+      <span class="desc">暗記済みの単語を確認・解除する</span>
+    </a>
+
     <!-- 保留一覧 -->
     <a href="/pending" class="mode-card">
       <span class="icon">💤</span>

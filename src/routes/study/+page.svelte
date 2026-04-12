@@ -60,6 +60,7 @@
           isPending: row.is_pending ?? false,
           reviewCount: row.review_count ?? 0,
           nextReviewAt: row.next_review_at ?? null,
+          isMemorized: row.is_memorized ?? false,
         };
       }
       statuses = loaded;
@@ -112,6 +113,9 @@
   // メモ編集パネルの表示フラグ
   let showMemoPanel = $state(false);
 
+  // 暗記済みになったときのメッセージ表示フラグ
+  let showMemorizedMessage = $state(false);
+
   // 今の単語のメモ内容
   let currentMemo = $derived(memos[currentWord?.no] ?? "");
 
@@ -144,6 +148,9 @@
   // 復習間隔の上限（日数）
   const MAX_INTERVAL_DAYS = 365; // 1年
 
+  // 何回連続正解で暗記済みにするか
+  const MEMORIZED_COUNT = 7;
+
   function getNextInterval(count) {
     const base = [1, 3, 7, 14, 30];
     let days;
@@ -172,6 +179,9 @@
     // 回答済みセットに追加（件数を1減らすため）
     answeredNos = new Set([...answeredNos, wordNo]);
 
+    // 7回連続正解で暗記済みにする
+    const isNowMemorized = newCount >= MEMORIZED_COUNT;
+
     // statuses を更新（リストが再計算される）
     statuses = {
       ...statuses,
@@ -180,20 +190,35 @@
         status: "known",
         reviewCount: newCount,
         nextReviewAt: nextReview.toISOString(),
+        isMemorized: isNowMemorized,
       },
     };
 
-    // ✅ IDから新しいリスト上の位置を探して移動する
-    if (nextWordNo !== null) {
-      showMeaning = false;
-      showMemoPanel = false;
-      // filteredWords → displayWords
-      const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
-      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
+    // 暗記済みになったらメッセージを表示して、3秒後に次のカードに移動する
+    if (isNowMemorized) {
+      showMemorizedMessage = true;
+      setTimeout(() => {
+        showMemorizedMessage = false;
+        // メッセージが消えてから次のカードに移動する
+        if (nextWordNo !== null) {
+          showMeaning = false;
+          showMemoPanel = false;
+          const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
+          filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
+        }
+      }, 3000);
+    } else {
+      // 暗記済みでない場合は今まで通りすぐに移動する
+      if (nextWordNo !== null) {
+        showMeaning = false;
+        showMemoPanel = false;
+        const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
+        filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
+      }
     }
 
     todayAnswerCount += 1;
-    // ✅ ブラウザ上でのみlocalStorageに保存する
+    // ブラウザ上でのみlocalStorageに保存する
     if (typeof window !== "undefined") {
       localStorage.setItem(todayAnswerKey, todayAnswerCount);
       for (const key of Object.keys(localStorage)) {
@@ -207,6 +232,7 @@
       status: "known",
       review_count: newCount,
       next_review_at: nextReview.toISOString(),
+      is_memorized: isNowMemorized,
     });
   }
 
@@ -321,11 +347,11 @@
       const seed = parseInt(todayKey.replace(/-/g, ""));
       snapshottedWords = seededShuffle(unknowns, seed).slice(0, todayLimit);
     } else if (newMode === "review") {
-      // 復習：next_review_atが今日以前の単語をシャッフル
+      // 復習：next_review_atが今日以前 かつ 暗記済みでない単語をシャッフル
       const now = new Date();
       const reviewWords = words.filter((w) => {
         const next = statuses[w.no]?.nextReviewAt;
-        return next && new Date(next) <= now;
+        return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
       });
       const seed = parseInt(todayKey.replace(/-/g, ""));
       snapshottedWords = seededShuffle(reviewWords, seed);
@@ -401,11 +427,11 @@
         // 保留中の単語だけ
         return words.filter((w) => statuses[w.no]?.isPending);
       } else if (mode === "review") {
-        // next_review_at が今日以前の単語だけ絞り込む
+        // next_review_at が今日以前 かつ 暗記済みでない単語だけ絞り込む
         const now = new Date();
         const reviewWords = words.filter((w) => {
           const next = statuses[w.no]?.nextReviewAt;
-          return next && new Date(next) <= now;
+          return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
         });
         // 今日のシード値でシャッフルしてランダム順にする
         const seed = parseInt(todayKey.replace(/-/g, ""));
@@ -618,6 +644,11 @@
         <button class="memo-btn" class:active={currentMemo !== ""} onclick={toggleMemoPanel}> ✏️ </button>
       </div>
     </div>
+
+    <!-- 暗記済みメッセージ -->
+    {#if showMemorizedMessage}
+      <div class="memorized-message">🎉 暗記済みになりました！</div>
+    {/if}
 
     <!-- 今の単語の状態バッジ -->
     {#if isPending}
@@ -1008,5 +1039,17 @@
   .today-count {
     font-size: 13px;
     color: #999;
+  }
+
+  /* 暗記済みメッセージ */
+  .memorized-message {
+    background: #d4edda;
+    color: #155724;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-align: center;
   }
 </style>

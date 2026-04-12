@@ -10,19 +10,18 @@
 
   // --- 状態変数 ---
   let words = $state([]);
-  // stage2の進捗（全部モードのフィルタ用・読み取り専用）
   let stage1Statuses = $state({});
-  // stage3の進捗（writingでの知ってる/知らない用）
   let statuses = $state({});
   let currentIndex = $state(0);
-  let input = $state(""); // 入力されたタイ語
-  let checked = $state(false); // 答え合わせをしたかどうか
-  let showReading = $state(false); // 読みを表示するかどうか
-  let isCorrect = $state(false); // 正解かどうか
+  let input = $state("");
+  let checked = $state(false);
+  let showReading = $state(false);
+  let isCorrect = $state(false);
   let loading = $state(true);
   let error = $state("");
   let memos = $state({});
   let showMemoPanel = $state(false);
+  let showMemorizedMessage = $state(false);
   let currentMemo = $derived(memos[currentWord?.no] ?? "");
 
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -31,7 +30,6 @@
   const todayAnswerKey = `todayAnswer_stage3_${todayKey}`;
   let todayAnswerCount = $state(
     (() => {
-      // ✅ ブラウザ上でのみlocalStorageを読む
       if (typeof window === "undefined") return 0;
       const saved = localStorage.getItem(todayAnswerKey);
       return saved ? parseInt(saved) : 0;
@@ -115,6 +113,7 @@
           isPending: row.is_pending ?? false,
           reviewCount: row.review_count ?? 0,
           nextReviewAt: row.next_review_at ?? null,
+          isMemorized: row.is_memorized ?? false,
         };
       }
       statuses = loaded2;
@@ -167,11 +166,11 @@
       } else if (mode === "pending") {
         return words.filter((w) => statuses[w.no]?.isPending);
       } else if (mode === "review") {
-        // next_review_at が今日以前の単語だけ絞り込む
+        // next_review_at が今日以前 かつ 暗記済みでない単語だけ絞り込む
         const now = new Date();
         const reviewWords = words.filter((w) => {
           const next = statuses[w.no]?.nextReviewAt;
-          return next && new Date(next) <= now;
+          return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
         });
         // 今日のシード値でシャッフルしてランダム順にする
         const seed = parseInt(todayKey.replace(/-/g, ""));
@@ -229,11 +228,11 @@
       const seed = parseInt(todayKey.replace(/-/g, ""));
       snapshottedWords = seededShuffle(unknowns, seed).slice(0, todayLimit);
     } else if (newMode === "review") {
-      // 復習：next_review_atが今日以前の単語をシャッフル
+      // 復習：next_review_atが今日以前 かつ 暗記済みでない単語をシャッフル
       const now = new Date();
       const reviewWords = words.filter((w) => {
         const next = statuses[w.no]?.nextReviewAt;
-        return next && new Date(next) <= now;
+        return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
       });
       const seed = parseInt(todayKey.replace(/-/g, ""));
       snapshottedWords = seededShuffle(reviewWords, seed);
@@ -304,6 +303,8 @@
 
   // 復習間隔の上限（日数）
   const MAX_INTERVAL_DAYS = 180; // 6か月
+  // 何回連続正解で暗記済みにするか
+  const MEMORIZED_COUNT = 7;
 
   function getNextInterval(count) {
     const base = [1, 3, 7, 14, 30];
@@ -335,6 +336,8 @@
 
     answeredNos = new Set([...answeredNos, wordNo]);
 
+    const isNowMemorized = newCount >= MEMORIZED_COUNT;
+
     // statuses を更新（リストが再計算される）
     statuses = {
       ...statuses,
@@ -343,19 +346,36 @@
         status: "known",
         reviewCount: newCount,
         nextReviewAt: nextReview.toISOString(),
+        isMemorized: isNowMemorized,
       },
     };
 
-    // ✅ IDから新しい位置を探して移動
-    if (nextWordNo !== null) {
-      const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
-      filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
+    if (isNowMemorized) {
+      showMemorizedMessage = true;
+      setTimeout(() => {
+        showMemorizedMessage = false;
+        // メッセージが消えてから次のカードに移動する
+        if (nextWordNo !== null) {
+          showMemoPanel = false;
+          const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
+          filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
+        }
+        // ✅ 次の単語の入力欄に自動でカーソルを当てる
+        setTimeout(() => {
+          document.querySelector(".thai-input")?.focus();
+        }, 0);
+      }, 3000);
+    } else {
+      // 暗記済みでない場合は今まで通りすぐに移動する
+      if (nextWordNo !== null) {
+        showMemoPanel = false;
+        const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
+        filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
+      }
+      setTimeout(() => {
+        document.querySelector(".thai-input")?.focus();
+      }, 0);
     }
-
-    // ✅ 次の単語の入力欄に自動でカーソルを当てる
-    setTimeout(() => {
-      document.querySelector(".thai-input")?.focus();
-    }, 0);
 
     todayAnswerCount += 1;
     // ✅ ブラウザ上でのみlocalStorageに保存する
@@ -372,6 +392,7 @@
       status: "known",
       review_count: newCount,
       next_review_at: nextReview.toISOString(),
+      is_memorized: isNowMemorized,
     });
   }
 
@@ -620,6 +641,11 @@
         <button class="memo-btn" class:active={currentMemo !== ""} onclick={toggleMemoPanel}> ✏️ </button>
       </div>
     </div>
+
+    <!-- 暗記済みメッセージ -->
+    {#if showMemorizedMessage}
+      <div class="memorized-message">🎉 暗記済みになりました！</div>
+    {/if}
 
     <!-- ステータスバッジ -->
     {#if isPending}
@@ -1075,9 +1101,19 @@
     font-family: inherit;
   }
 
-  /* 本日回答数 */
   .today-count {
     font-size: 13px;
     color: #999;
+  }
+
+  .memorized-message {
+    background: #d4edda;
+    color: #155724;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-align: center;
   }
 </style>
