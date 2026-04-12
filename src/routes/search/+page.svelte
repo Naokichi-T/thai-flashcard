@@ -229,6 +229,7 @@
 
   .result-reading {
     font-size: 13px;
+    font-family: Arial, Helvetica, sans-serif;
     color: #888;
   }
 

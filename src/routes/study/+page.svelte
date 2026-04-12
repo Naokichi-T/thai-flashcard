@@ -701,6 +701,7 @@
   .reading {
     color: #666;
     font-size: 18px;
+    font-family: Arial, Helvetica, sans-serif;
     margin-bottom: 24px;
   }
 

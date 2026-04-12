@@ -1008,6 +1008,7 @@
 
   .reading-hint {
     font-size: 16px;
+    font-family: Arial, Helvetica, sans-serif;
     color: #aaa;
     margin-bottom: 12px;
   }
