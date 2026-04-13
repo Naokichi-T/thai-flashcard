@@ -179,8 +179,12 @@
     // 回答済みセットに追加（件数を1減らすため）
     answeredNos = new Set([...answeredNos, wordNo]);
 
-    // 全問回答し終わったらスナップショットをクリアして終了画面に切り替える
-    if (snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length) {
+    // 全問終了かどうかを変数に保存しておく
+    const isFinished = snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length;
+
+    if (isFinished) {
+      // 全問終了 → 完了フラグを立てて、スナップショットをクリア
+      isCompleted = true;
       snapshottedWords = [];
       answeredNos = new Set();
     }
@@ -205,8 +209,8 @@
       showMemorizedMessage = true;
       setTimeout(() => {
         showMemorizedMessage = false;
-        // メッセージが消えてから次のカードに移動する
-        if (nextWordNo !== null) {
+        // ✅ 全問終了のときは移動しない
+        if (!isFinished && nextWordNo !== null) {
           showMeaning = false;
           showMemoPanel = false;
           const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
@@ -214,8 +218,8 @@
         }
       }, 3000);
     } else {
-      // 暗記済みでない場合は今まで通りすぐに移動する
-      if (nextWordNo !== null) {
+      // ✅ 全問終了のときは移動しない
+      if (!isFinished && nextWordNo !== null) {
         showMeaning = false;
         showMemoPanel = false;
         const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
@@ -256,8 +260,12 @@
     // 回答済みセットに追加（件数を1減らすため）
     answeredNos = new Set([...answeredNos, wordNo]);
 
-    // 全問回答し終わったらスナップショットをクリアして終了画面に切り替える
-    if (snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length) {
+    // ✅ 全問終了かどうかを変数に保存しておく
+    const isFinished = snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length;
+
+    if (isFinished) {
+      // 全問終了 → 完了フラグを立てて、スナップショットをクリア
+      isCompleted = true;
       snapshottedWords = [];
       answeredNos = new Set();
     }
@@ -272,11 +280,10 @@
       },
     };
 
-    // ✅ IDから位置を探して移動
-    if (nextWordNo !== null) {
+    // ✅ 全問終了のときは移動しない
+    if (!isFinished && nextWordNo !== null) {
       showMeaning = false;
       showMemoPanel = false;
-      // ★ 変更：filteredWords → displayWords
       const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
       filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
     }
@@ -344,6 +351,8 @@
     mode = newMode;
     // モードを切り替えたら回答済みセットをリセット
     answeredNos = new Set();
+    // モードを切り替えたら完了フラグをリセット
+    isCompleted = false;
 
     if (newMode === "unanswered") {
       // 未回答：まだ回答していない単語
@@ -465,6 +474,9 @@
   // スナップショット内で回答済みの単語番号を管理するセット
   let answeredNos = $state(new Set());
 
+  // 今日のN問・復習・未回答の完了フラグ（完了後は操作できなくする）
+  let isCompleted = $state(false);
+
   // 未回答モードに入ったときの初期件数（LocalStorageから復元）
   // キーに日付とステージを含めることで、日付が変わると自動リセットされる
   const unansweredStartKey = `unansweredStart_stage1_${todayKey}`;
@@ -566,6 +578,27 @@
   <p>読み込み中...</p>
 {:else if error}
   <p style="color: red;">エラー: {error}</p>
+{:else if isCompleted}
+  <!-- 全問回答完了画面 -->
+  <div class="card">
+    <p style="font-size: 48px;">🎉</p>
+    <p>完了しました！</p>
+    <p style="color:#666; font-size:14px; margin-top:8px;">別のモードを選んでください</p>
+    <div class="mode-switch" style="margin-top:24px;">
+      <div class="mode-primary">
+        <button onclick={() => switchMode("review")}>🔁 復習</button>
+        <button onclick={() => switchMode("today")}>📅 今日の{todayLimit}問</button>
+        <button onclick={() => switchMode("unanswered")}>❓ 未回答</button>
+      </div>
+      <div class="mode-secondary">
+        <button onclick={() => (mode = "all")}>📚 全部</button>
+        <button onclick={() => (mode = "unknown")}>❌ 知らない</button>
+        <button onclick={() => (mode = "favorite")}>⭐ スター</button>
+        <button onclick={() => (mode = "pending")}>💤 保留</button>
+      </div>
+    </div>
+    <a href="/" class="back-link" style="margin-top:24px;">← メニューに戻る</a>
+  </div>
   <!-- 該当する単語が0件のとき -->
 {:else if filteredWords.length === 0}
   <div class="card">

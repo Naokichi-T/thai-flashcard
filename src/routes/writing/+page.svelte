@@ -185,6 +185,7 @@
   let filteredIndex = $state(0);
   let snapshottedWords = $state([]);
   let answeredNos = $state(new Set());
+  let isCompleted = $state(false);
   const unansweredStartKey = `unansweredStart_stage3_${todayKey}`;
   let unansweredStartCount = $state(
     (() => {
@@ -214,6 +215,8 @@
     mode = newMode;
 
     answeredNos = new Set();
+
+    isCompleted = false;
 
     if (newMode === "unanswered") {
       // 未回答：stage2で「知ってる」かつwritingでまだ回答していない単語
@@ -330,20 +333,26 @@
     const nextIndex = (filteredIndex + 1) % displayWords.length;
     const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
 
-    // ✅ 表示をリセット（checked = false になってもここで完結するので問題ない）
+    // ✅ 表示をリセット
     resetCard();
     showMemoPanel = false;
 
     answeredNos = new Set([...answeredNos, wordNo]);
 
-    if (snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length) {
+    // ✅ 全問終了かどうかを変数に保存しておく
+    const isFinished = snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length;
+
+    if (isFinished) {
+      // 全問終了 → 完了フラグを立てて、スナップショットをクリア
+      isCompleted = true;
       snapshottedWords = [];
       answeredNos = new Set();
     }
 
+    // 7回連続正解で暗記済みにする
     const isNowMemorized = newCount >= MEMORIZED_COUNT;
 
-    // statuses を更新（リストが再計算される）
+    // statuses を「known」に更新
     statuses = {
       ...statuses,
       [wordNo]: {
@@ -359,20 +368,19 @@
       showMemorizedMessage = true;
       setTimeout(() => {
         showMemorizedMessage = false;
-        // メッセージが消えてから次のカードに移動する
-        if (nextWordNo !== null) {
+        // ✅ 全問終了のときは移動しない
+        if (!isFinished && nextWordNo !== null) {
           showMemoPanel = false;
           const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
           filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
         }
-        // ✅ 次の単語の入力欄に自動でカーソルを当てる
         setTimeout(() => {
           document.querySelector(".thai-input")?.focus();
         }, 0);
       }, 3000);
     } else {
-      // 暗記済みでない場合は今まで通りすぐに移動する
-      if (nextWordNo !== null) {
+      // ✅ 全問終了のときは移動しない
+      if (!isFinished && nextWordNo !== null) {
         showMemoPanel = false;
         const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
         filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
@@ -416,11 +424,17 @@
 
     answeredNos = new Set([...answeredNos, wordNo]);
 
-    if (snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length) {
+    // ✅ 全問終了かどうかを変数に保存しておく
+    const isFinished = snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length;
+
+    if (isFinished) {
+      // 全問終了 → 完了フラグを立てて、スナップショットをクリア
+      isCompleted = true;
       snapshottedWords = [];
       answeredNos = new Set();
     }
 
+    // statuses を「unknown」に更新
     statuses = {
       ...statuses,
       [wordNo]: {
@@ -431,8 +445,9 @@
       },
     };
 
-    // ✅ IDから位置を探して移動
-    if (nextWordNo !== null) {
+    // ✅ 全問終了のときは移動しない
+    if (!isFinished && nextWordNo !== null) {
+      showMemoPanel = false;
       const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
       filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
     }
@@ -555,6 +570,28 @@
     <p style="font-size: 48px;">📚</p>
     <p>「日本語→タイ語」で「知ってる」単語がまだありません。</p>
     <a href="/reverse" class="back-link">← 日本語→タイ語へ</a>
+  </div>
+{:else if isCompleted}
+  <!-- 全問回答完了画面 -->
+  <div class="card">
+    <p style="font-size: 48px;">🎉</p>
+    <p>完了しました！</p>
+    <p style="color:#666; font-size:14px; margin-top:8px;">別のモードを選んでください</p>
+    <!-- モード切り替えボタン（完了後も押せるように表示） -->
+    <div class="mode-switch" style="margin-top:24px;">
+      <div class="mode-primary">
+        <button onclick={() => switchMode("review")}>🔁 復習</button>
+        <button onclick={() => switchMode("today")}>📅 今日の{todayLimit}問</button>
+        <button onclick={() => switchMode("unanswered")}>❓ 未回答</button>
+      </div>
+      <div class="mode-secondary">
+        <button onclick={() => (mode = "all")}>📚 全部</button>
+        <button onclick={() => (mode = "unknown")}>❌ 知らない</button>
+        <button onclick={() => (mode = "favorite")}>⭐ スター</button>
+        <button onclick={() => (mode = "pending")}>💤 保留</button>
+      </div>
+    </div>
+    <a href="/" class="back-link" style="margin-top:24px;">← メニューに戻る</a>
   </div>
 {:else if filteredWords.length === 0}
   <div class="card">
