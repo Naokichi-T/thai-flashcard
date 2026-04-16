@@ -730,7 +730,16 @@
 
     <!-- 読みを見るボタン -->
     {#if !showReading}
-      <button class="reading-btn" onclick={() => (showReading = true)}>読みを見る</button>
+      <button
+        class="reading-btn"
+        onclick={() => {
+          showReading = true;
+          // DOMの更新が終わってからinputにフォーカスを当てる
+          setTimeout(() => {
+            document.querySelector(".thai-input")?.focus();
+          }, 0);
+        }}>読みを見る</button
+      >
     {:else}
       <p class="reading-hint">{currentWord.reading}</p>
     {/if}
