@@ -183,10 +183,14 @@
     const isFinished = snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length;
 
     if (isFinished) {
-      // 全問終了 → 完了フラグを立てて、スナップショットをクリア
       isCompleted = true;
       snapshottedWords = [];
       answeredNos = new Set();
+      // 今日の20問を完了済みとして保存
+      if (mode === "today" && typeof window !== "undefined") {
+        isTodayCompleted = true;
+        localStorage.setItem(todayCompletedKey, "1");
+      }
     }
 
     // 7回連続正解で暗記済みにする
@@ -264,10 +268,14 @@
     const isFinished = snapshottedWords.length > 0 && answeredNos.size >= snapshottedWords.length;
 
     if (isFinished) {
-      // 全問終了 → 完了フラグを立てて、スナップショットをクリア
       isCompleted = true;
       snapshottedWords = [];
       answeredNos = new Set();
+      // 今日の20問を完了済みとして保存
+      if (mode === "today" && typeof window !== "undefined") {
+        isTodayCompleted = true;
+        localStorage.setItem(todayCompletedKey, "1");
+      }
     }
 
     statuses = {
@@ -363,9 +371,14 @@
         localStorage.setItem(unansweredStartKey, unansweredStartCount);
       }
     } else if (newMode === "today") {
-      const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
-      // randomShuffle：毎回違う順番になる
-      snapshottedWords = randomShuffle(unknowns).slice(0, todayLimit);
+      // 完了済みなら空にする（当日中は再出題しない）
+      if (isTodayCompleted) {
+        snapshottedWords = [];
+      } else {
+        const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
+        // randomShuffle：毎回違う順番になる
+        snapshottedWords = randomShuffle(unknowns).slice(0, todayLimit);
+      }
     } else if (newMode === "review") {
       const now = new Date();
       const reviewWords = words.filter((w) => {
@@ -488,6 +501,15 @@
       if (typeof window === "undefined") return null;
       const saved = localStorage.getItem(unansweredStartKey);
       return saved ? parseInt(saved) : null;
+    })(),
+  );
+
+  // 今日の20問の完了フラグ（当日中は再出題しない）
+  const todayCompletedKey = `todayCompleted_stage1_${todayKey}`;
+  let isTodayCompleted = $state(
+    (() => {
+      if (typeof window === "undefined") return false;
+      return localStorage.getItem(todayCompletedKey) === "1";
     })(),
   );
 
@@ -677,7 +699,9 @@
             >{formatCount(
               mode === "today"
                 ? Math.max(snapshottedWords.length - answeredNos.size, 0)
-                : Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit),
+                : isTodayCompleted
+                  ? 0
+                  : Math.min(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length, todayLimit),
             )}</span
           >
         </button>
