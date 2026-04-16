@@ -591,10 +591,30 @@
         <button onclick={() => switchMode("unanswered")}>❓ 未回答</button>
       </div>
       <div class="mode-secondary">
-        <button onclick={() => (mode = "all")}>📚 全部</button>
-        <button onclick={() => (mode = "unknown")}>❌ 知らない</button>
-        <button onclick={() => (mode = "favorite")}>⭐ スター</button>
-        <button onclick={() => (mode = "pending")}>💤 保留</button>
+        <button
+          onclick={() => {
+            isCompleted = false;
+            mode = "all";
+          }}>📚 全部</button
+        >
+        <button
+          onclick={() => {
+            isCompleted = false;
+            mode = "unknown";
+          }}>❌ 知らない</button
+        >
+        <button
+          onclick={() => {
+            isCompleted = false;
+            mode = "favorite";
+          }}>⭐ スター</button
+        >
+        <button
+          onclick={() => {
+            isCompleted = false;
+            mode = "pending";
+          }}>💤 保留</button
+        >
       </div>
     </div>
     <a href="/" class="back-link" style="margin-top:24px;">← メニューに戻る</a>
