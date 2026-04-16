@@ -363,19 +363,17 @@
         localStorage.setItem(unansweredStartKey, unansweredStartCount);
       }
     } else if (newMode === "today") {
-      // 今日のN問：知らない単語からシャッフルしてN件
       const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
-      const seed = parseInt(todayKey.replace(/-/g, ""));
-      snapshottedWords = seededShuffle(unknowns, seed).slice(0, todayLimit);
+      // randomShuffle：毎回違う順番になる
+      snapshottedWords = randomShuffle(unknowns).slice(0, todayLimit);
     } else if (newMode === "review") {
-      // 復習：next_review_atが今日以前 かつ 暗記済みでない単語をシャッフル
       const now = new Date();
       const reviewWords = words.filter((w) => {
         const next = statuses[w.no]?.nextReviewAt;
         return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
       });
-      const seed = parseInt(todayKey.replace(/-/g, ""));
-      snapshottedWords = seededShuffle(reviewWords, seed);
+      // randomShuffle：毎回違う順番になる
+      snapshottedWords = randomShuffle(reviewWords);
     } else {
       snapshottedWords = [];
     }
@@ -421,6 +419,16 @@
     return arr;
   }
 
+  // ランダムにシャッフルする関数（毎回違う順番になる）
+  function randomShuffle(array) {
+    const arr = [...array]; // 元の配列を壊さないようにコピー
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
   // 今日の出題数（ここを変えるだけで問題数が変わる）
   const todayLimit = 20;
 
@@ -433,11 +441,8 @@
       } else if (mode === "today") {
         // 知らない単語からランダムでx個の単語を選ぶ
         const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
-        // 今日の日付をシード値（数字）に変換する
-        // 例：'2026-03-20' → 20260320
-        const seed = parseInt(todayKey.replace(/-/g, ""));
-        // シャッフルして最初のx個の単語を取る
-        return seededShuffle(unknowns, seed).slice(0, todayLimit);
+        // シャッフルなし（件数表示のみ。並び順はswitchModeのスナップショットで管理）
+        return unknowns.slice(0, todayLimit);
       } else if (mode === "favorite") {
         // お気に入りの単語だけ
         return words.filter((w) => statuses[w.no]?.isFavorite && !statuses[w.no]?.isPending);
@@ -454,9 +459,7 @@
           const next = statuses[w.no]?.nextReviewAt;
           return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
         });
-        // 今日のシード値でシャッフルしてランダム順にする
-        const seed = parseInt(todayKey.replace(/-/g, ""));
-        return seededShuffle(reviewWords, seed);
+        return reviewWords;
       } else {
         // 全部（保留も含めて全単語を表示）
         return words;
@@ -591,26 +594,35 @@
         <button onclick={() => switchMode("unanswered")}>❓ 未回答</button>
       </div>
       <div class="mode-secondary">
+        // 修正後
         <button
           onclick={() => {
+            snapshottedWords = [];
+            answeredNos = new Set();
             isCompleted = false;
             mode = "all";
           }}>📚 全部</button
         >
         <button
           onclick={() => {
+            snapshottedWords = [];
+            answeredNos = new Set();
             isCompleted = false;
             mode = "unknown";
           }}>❌ 知らない</button
         >
         <button
           onclick={() => {
+            snapshottedWords = [];
+            answeredNos = new Set();
             isCompleted = false;
             mode = "favorite";
           }}>⭐ スター</button
         >
         <button
           onclick={() => {
+            snapshottedWords = [];
+            answeredNos = new Set();
             isCompleted = false;
             mode = "pending";
           }}>💤 保留</button
@@ -677,16 +689,48 @@
       </div>
       <!-- 下段：サブ4つ -->
       <div class="mode-secondary">
-        <button class:active={mode === "all"} onclick={() => (mode = "all")}>
+        <button
+          class:active={mode === "all"}
+          onclick={() => {
+            snapshottedWords = [];
+            answeredNos = new Set();
+            isCompleted = false;
+            mode = "all";
+          }}
+        >
           📚 全部<span class="count">{formatCount(words.filter((w) => !statuses[w.no]?.isPending).length)}</span>
         </button>
-        <button class:active={mode === "unknown"} onclick={() => (mode = "unknown")}>
+        <button
+          class:active={mode === "unknown"}
+          onclick={() => {
+            snapshottedWords = [];
+            answeredNos = new Set();
+            isCompleted = false;
+            mode = "unknown";
+          }}
+        >
           ❌ 知らない<span class="count">{formatCount(Object.values(statuses).filter((s) => s?.status === "unknown").length)}</span>
         </button>
-        <button class:active={mode === "favorite"} onclick={() => (mode = "favorite")}>
+        <button
+          class:active={mode === "favorite"}
+          onclick={() => {
+            snapshottedWords = [];
+            answeredNos = new Set();
+            isCompleted = false;
+            mode = "favorite";
+          }}
+        >
           ⭐ スター<span class="count">{formatCount(Object.values(statuses).filter((s) => s?.isFavorite).length)}</span>
         </button>
-        <button class:active={mode === "pending"} onclick={() => (mode = "pending")}>
+        <button
+          class:active={mode === "pending"}
+          onclick={() => {
+            snapshottedWords = [];
+            answeredNos = new Set();
+            isCompleted = false;
+            mode = "pending";
+          }}
+        >
           💤 保留<span class="count">{formatCount(words.filter((w) => statuses[w.no]?.isPending).length)}</span>
         </button>
       </div>
