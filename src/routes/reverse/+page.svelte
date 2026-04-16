@@ -599,7 +599,6 @@
         <button onclick={() => switchMode("unanswered")}>❓ 未回答</button>
       </div>
       <div class="mode-secondary">
-        // 修正後
         <button
           onclick={() => {
             snapshottedWords = [];
