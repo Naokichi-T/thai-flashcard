@@ -246,11 +246,11 @@
       // 完了済みなら空にする（当日中は再出題しない）
       if (isTodayCompleted) {
         snapshottedWords = [];
-      } else {
-        const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
-        // randomShuffle：毎回違う順番になる
-        snapshottedWords = randomShuffle(unknowns).slice(0, todayLimit);
+        return;
       }
+      const unknowns = words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending);
+      // randomShuffle：毎回違う順番になる
+      snapshottedWords = randomShuffle(unknowns).slice(0, todayLimit);
     } else if (newMode === "review") {
       // 復習：next_review_atが今日以前 かつ 暗記済みでない単語をシャッフル
       const now = new Date();
@@ -663,6 +663,17 @@
       <p style="font-size: 48px;">🎉</p>
       <p>今日の復習はありません！</p>
       <button onclick={() => (mode = "all")}>全部を見る</button>
+    {:else if mode === "today"}
+      <p style="font-size: 48px;">🎉</p>
+      <p>今日の{todayLimit}問は完了済みです！</p>
+      <button
+        onclick={() => {
+          snapshottedWords = [];
+          answeredNos = new Set();
+          isCompleted = false;
+          mode = "all";
+        }}>全部を見る</button
+      >
     {:else}
       <p style="font-size: 48px;">🎉</p>
       <p>該当する単語がありません！</p>
