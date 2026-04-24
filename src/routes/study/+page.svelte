@@ -380,10 +380,12 @@
       // randomShuffle：毎回違う順番になる
       snapshottedWords = randomShuffle(unknowns).slice(0, todayLimit);
     } else if (newMode === "review") {
-      const now = new Date();
+      // 今日の日付を "2026-04-24" 形式で取得する
+      const today = new Date().toISOString().slice(0, 10);
       const reviewWords = words.filter((w) => {
         const next = statuses[w.no]?.nextReviewAt;
-        return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
+        // 日付部分だけを取り出して比較（時刻は無視する）
+        return next && next.slice(0, 10) <= today && !statuses[w.no]?.isMemorized;
       });
       // randomShuffle：毎回違う順番になる
       snapshottedWords = randomShuffle(reviewWords);
@@ -466,11 +468,12 @@
         // 保留中の単語だけ
         return words.filter((w) => statuses[w.no]?.isPending);
       } else if (mode === "review") {
-        // next_review_at が今日以前 かつ 暗記済みでない単語だけ絞り込む
-        const now = new Date();
+        // next_review_at の日付部分が今日以前 かつ 暗記済みでない単語だけ絞り込む
+        const today = new Date().toISOString().slice(0, 10);
         const reviewWords = words.filter((w) => {
           const next = statuses[w.no]?.nextReviewAt;
-          return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
+          // 日付部分だけを取り出して比較（時刻は無視する）
+          return next && next.slice(0, 10) <= today && !statuses[w.no]?.isMemorized;
         });
         return reviewWords;
       } else {

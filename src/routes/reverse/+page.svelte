@@ -178,11 +178,12 @@
       } else if (mode === "pending") {
         return words.filter((w) => statuses[w.no]?.isPending);
       } else if (mode === "review") {
-        // next_review_at が今日以前 かつ 暗記済みでない単語だけ絞り込む
-        const now = new Date();
+        // next_review_at の日付部分が今日以前 かつ 暗記済みでない単語だけ絞り込む
+        const today = new Date().toISOString().slice(0, 10);
         const reviewWords = words.filter((w) => {
           const next = statuses[w.no]?.nextReviewAt;
-          return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
+          // 日付部分だけを取り出して比較（時刻は無視する）
+          return next && next.slice(0, 10) <= today && !statuses[w.no]?.isMemorized;
         });
         // シャッフルなし（件数表示のみ。並び順はswitchModeのスナップショットで管理）
         return reviewWords;
@@ -262,11 +263,12 @@
       // randomShuffle：毎回違う順番になる
       snapshottedWords = randomShuffle(unknowns).slice(0, todayLimit);
     } else if (newMode === "review") {
-      // 復習：next_review_atが今日以前 かつ 暗記済みでない単語をシャッフル
-      const now = new Date();
+      // 復習：next_review_atの日付が今日以前 かつ 暗記済みでない単語をシャッフル
+      const today = new Date().toISOString().slice(0, 10);
       const reviewWords = words.filter((w) => {
         const next = statuses[w.no]?.nextReviewAt;
-        return next && new Date(next) <= now && !statuses[w.no]?.isMemorized;
+        // 日付部分だけを取り出して比較（時刻は無視する）
+        return next && next.slice(0, 10) <= today && !statuses[w.no]?.isMemorized;
       });
       // randomShuffle：毎回違う順番になる
       snapshottedWords = randomShuffle(reviewWords);
