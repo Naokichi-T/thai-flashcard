@@ -43,12 +43,25 @@
     try {
       // 全単語を取得（1000件ずつ分割）
       words = await fetchAllWords();
-      console.log("取得件数:", words.length); // 確認用
 
-      // stage1の進捗を取得
-      const { data: statusData, error: statusError } = await supabase.from("word_status").select("word_no, status, is_pending").eq("stage", 1);
+      // stage1の進捗を全件取得（1000件ずつページネーション）
+      let statusData = [];
+      let statusFrom = 0;
+      const statusBatchSize = 1000;
 
-      if (statusError) throw new Error(statusError.message);
+      while (true) {
+        const { data, error: statusError } = await supabase
+          .from("word_status")
+          .select("word_no, status, is_pending")
+          .eq("stage", 1)
+          .range(statusFrom, statusFrom + statusBatchSize - 1);
+
+        if (statusError) throw new Error(statusError.message);
+        statusData = [...statusData, ...data];
+
+        if (data.length < statusBatchSize) break; // 取得件数が1000未満なら終了
+        statusFrom += statusBatchSize;
+      }
 
       const loaded = {};
       for (const row of statusData) {
