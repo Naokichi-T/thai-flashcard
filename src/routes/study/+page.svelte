@@ -163,7 +163,7 @@
   const MAX_INTERVAL_DAYS = 365; // 1年
 
   // 何回連続正解で暗記済みにするか
-  const MEMORIZED_COUNT = 7;
+  const MEMORIZED_COUNT = 5;
 
   function getNextInterval(count) {
     const base = [1, 3, 7, 14, 30];
@@ -207,7 +207,7 @@
       }
     }
 
-    // 7回連続正解で暗記済みにする
+    // 5回連続正解で暗記済みにする
     const isNowMemorized = newCount >= MEMORIZED_COUNT;
 
     // statuses を更新（リストが再計算される）
