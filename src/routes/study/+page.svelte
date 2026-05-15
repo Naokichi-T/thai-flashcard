@@ -166,7 +166,7 @@
   const MEMORIZED_COUNT = 5;
 
   function getNextInterval(count) {
-    const base = [1, 3, 7, 14, 30];
+    const base = [1, 4, 10, 21, 45];
     let days;
     if (count <= base.length) {
       days = base[count - 1];
