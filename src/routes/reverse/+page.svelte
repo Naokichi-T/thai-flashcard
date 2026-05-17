@@ -209,8 +209,8 @@
         const today = new Date().toISOString().slice(0, 10);
         const reviewWords = words.filter((w) => {
           const next = statuses[w.no]?.nextReviewAt;
-          // 日付部分だけを取り出して比較（時刻は無視する）
-          return next && next.slice(0, 10) <= today && !statuses[w.no]?.isMemorized;
+          // 日付部分だけを取り出して比較（時刻は無視する）・保留中は除外する
+          return next && next.slice(0, 10) <= today && !statuses[w.no]?.isMemorized && !statuses[w.no]?.isPending;
         });
         // シャッフルなし（件数表示のみ。並び順はswitchModeのスナップショットで管理）
         return reviewWords;
@@ -294,8 +294,8 @@
       const today = new Date().toISOString().slice(0, 10);
       const reviewWords = words.filter((w) => {
         const next = statuses[w.no]?.nextReviewAt;
-        // 日付部分だけを取り出して比較（時刻は無視する）
-        return next && next.slice(0, 10) <= today && !statuses[w.no]?.isMemorized;
+        // 日付部分だけを取り出して比較（時刻は無視する）・保留中は除外する
+        return next && next.slice(0, 10) <= today && !statuses[w.no]?.isMemorized && !statuses[w.no]?.isPending;
       });
       // randomShuffle：毎回違う順番になる
       snapshottedWords = randomShuffle(reviewWords);
@@ -711,7 +711,8 @@
                 ? Math.max(snapshottedWords.length - answeredNos.size, 0)
                 : words.filter((w) => {
                     const next = statuses[w.no]?.nextReviewAt;
-                    return next && new Date(next) <= new Date();
+                    // 時刻ではなく日付だけで比較する（時刻によって件数が変わるのを防ぐ）
+                    return next && next.slice(0, 10) <= new Date().toISOString().slice(0, 10);
                   }).length,
             )}</span
           >
