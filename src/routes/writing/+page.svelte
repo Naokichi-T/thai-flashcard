@@ -382,10 +382,6 @@
     const nextIndex = (filteredIndex + 1) % displayWords.length;
     const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
 
-    // ✅ 表示をリセット
-    resetCard();
-    showMemoPanel = false;
-
     answeredNos = new Set([...answeredNos, wordNo]);
 
     // ✅ 全問終了かどうかを変数に保存しておく
@@ -421,9 +417,11 @@
       showMemorizedMessage = true;
       setTimeout(() => {
         showMemorizedMessage = false;
+        // 暗記済みのときは3秒後にリセット（正解画面のままメッセージを表示するため）
+        resetCard();
+        showMemoPanel = false;
         // ✅ 全問終了のときは移動しない
         if (!isFinished && nextWordNo !== null) {
-          showMemoPanel = false;
           const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
           filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
         }
