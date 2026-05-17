@@ -432,6 +432,8 @@
     } else {
       // ✅ 全問終了のときは移動しない
       if (!isFinished && nextWordNo !== null) {
+        // カードを切り替える前にリセットする
+        resetCard();
         showMemoPanel = false;
         const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
         filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
