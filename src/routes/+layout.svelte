@@ -24,6 +24,7 @@
 
 <svelte:head>
   <link rel="icon" href={favicon} />
+  <title>単語帳</title>
 </svelte:head>
 
 {@render children()}
