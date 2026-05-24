@@ -374,7 +374,6 @@
     const nextIndex = (filteredIndex + 1) % displayWords.length;
     const nextWordNo = displayWords.length > 1 ? displayWords[nextIndex].no : null;
 
-    showAnswer = false;
     showReading = false;
     showMemoPanel = false;
 
@@ -411,11 +410,12 @@
       showMemorizedMessage = true;
       setTimeout(() => {
         showMemorizedMessage = false;
+        // メッセージが消えるタイミングで答えも閉じる
+        showAnswer = false;
+        showReading = false;
+        showMemoPanel = false;
         // ✅ 全問終了のときは移動しない
         if (!isFinished && nextWordNo !== null) {
-          showAnswer = false;
-          showReading = false;
-          showMemoPanel = false;
           const newIndex = displayWords.findIndex((w) => w.no === nextWordNo);
           filteredIndex = newIndex !== -1 ? newIndex : Math.min(filteredIndex, displayWords.length - 1);
         }
