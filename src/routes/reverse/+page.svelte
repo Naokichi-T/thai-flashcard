@@ -712,7 +712,8 @@
                 : words.filter((w) => {
                     const next = statuses[w.no]?.nextReviewAt;
                     // 時刻ではなく日付だけで比較する（時刻によって件数が変わるのを防ぐ）
-                    return next && next.slice(0, 10) <= new Date().toISOString().slice(0, 10);
+                    // 暗記済み・保留中は除外する（switchModeの条件と合わせる）
+                    return next && next.slice(0, 10) <= new Date().toISOString().slice(0, 10) && !statuses[w.no]?.isMemorized && !statuses[w.no]?.isPending;
                   }).length,
             )}</span
           >
