@@ -125,9 +125,8 @@
   let filteredWords = $derived(weakWords.filter((w) => w.totalIncorrect >= minCount));
 </script>
 
-<a href="/" class="back-link">← メニューへ</a>
-
 <div class="container">
+  <a href="/" class="back-link">← メニューに戻る</a>
   <h1 class="title">🔴 苦手な単語</h1>
 
   {#if loading}
@@ -171,7 +170,6 @@
     color: #999;
     text-decoration: none;
     margin-bottom: 16px;
-    text-align: left;
   }
 
   .back-link:hover {
@@ -179,8 +177,11 @@
   }
 
   .container {
-    width: 90vw;
-    max-width: 400px;
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    width: 340px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }
 
   .title {
