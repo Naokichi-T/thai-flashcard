@@ -51,6 +51,13 @@
       <span class="desc">保留中の単語を確認・解除する</span>
     </a>
 
+    <!-- 苦手な単語一覧 -->
+    <a href="/weak" class="mode-card">
+      <span class="icon">🔴</span>
+      <span class="name">苦手な単語</span>
+      <span class="desc">間違えた回数が多い単語を確認する</span>
+    </a>
+
     <!-- 検索 -->
     <a href="/search" class="mode-card">
       <span class="icon">🔍</span>
