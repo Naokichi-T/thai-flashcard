@@ -134,7 +134,7 @@
       while (true) {
         const { data, error: status2Error } = await supabase
           .from("word_status")
-          .select("word_no, status, is_favorite, is_pending, review_count, next_review_at")
+          .select("word_no, status, is_favorite, is_pending, review_count, next_review_at, incorrect_count")
           .eq("stage", 3)
           .range(status2From, status2From + statusBatchSize - 1);
 
@@ -154,6 +154,7 @@
           reviewCount: row.review_count ?? 0,
           nextReviewAt: row.next_review_at ?? null,
           isMemorized: row.is_memorized ?? false,
+          incorrectCount: row.incorrect_count ?? 0, // ← 間違え回数を読み込む
         };
       }
       statuses = loaded2;
@@ -465,6 +466,10 @@
   async function markUnknown() {
     const wordNo = currentWord.no;
 
+    // 現在の incorrect_count を取得して +1 する
+    const currentIncorrect = statuses[wordNo]?.incorrectCount ?? 0;
+    const newIncorrectCount = currentIncorrect + 1;
+
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + 1);
 
@@ -499,6 +504,7 @@
         status: "unknown",
         reviewCount: 0,
         nextReviewAt: nextReview.toISOString(),
+        incorrectCount: newIncorrectCount, // 間違え回数を更新
       },
     };
 
@@ -529,6 +535,7 @@
       status: "unknown",
       review_count: 0,
       next_review_at: nextReview.toISOString(),
+      incorrect_count: newIncorrectCount, // ← 間違え回数をDBに保存
     });
   }
 
