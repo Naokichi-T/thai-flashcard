@@ -783,7 +783,7 @@
             mode = "unknown";
           }}
         >
-          ❌ 知らない<span class="count">{formatCount(Object.values(statuses).filter((s) => s?.status === "unknown").length)}</span>
+          ❌ 知らない<span class="count">{formatCount(words.filter((w) => statuses[w.no]?.status === "unknown" && !statuses[w.no]?.isPending).length)}</span>
         </button>
         <button
           class:active={mode === "favorite"}
