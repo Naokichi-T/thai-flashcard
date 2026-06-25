@@ -96,18 +96,30 @@
   // 暗記済みを解除する
   // ============================================================
   async function releaseMemorized(wordNo) {
-    // 画面から即座に反映する
+    // 画面から即座に反映する（stage1〜3 すべての isMemorized を false に）
     statuses = {
       ...statuses,
-      [activeStage]: {
-        ...statuses[activeStage],
-        [wordNo]: { isMemorized: false },
-      },
+      1: { ...statuses[1], [wordNo]: { ...statuses[1]?.[wordNo], isMemorized: false } },
+      2: { ...statuses[2], [wordNo]: { ...statuses[2]?.[wordNo], isMemorized: false } },
+      3: { ...statuses[3], [wordNo]: { ...statuses[3]?.[wordNo], isMemorized: false } },
     };
 
-    // Supabaseを更新（is_memorized を false に、review_count を0にリセット）
+    // Supabaseを更新（stage1〜3 すべてまとめて）
+    // - is_memorized: false（暗記済み解除）
+    // - status: "unknown"（知らないに戻す）
+    // - review_count: 0（正解回数リセット）
+    // - next_review_at: 今日（すぐ復習対象に）
     const today = new Date().toISOString();
-    const { error: sbError } = await supabase.from("word_status").update({ is_memorized: false, review_count: 0, next_review_at: today }).eq("word_no", wordNo).eq("stage", activeStage);
+    const { error: sbError } = await supabase
+      .from("word_status")
+      .update({
+        is_memorized: false,
+        status: "unknown",
+        review_count: 0,
+        next_review_at: today,
+      })
+      .eq("word_no", wordNo)
+      .in("stage", [1, 2, 3]);
 
     if (sbError) console.error("解除失敗:", sbError.message);
   }
