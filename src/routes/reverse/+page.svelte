@@ -153,6 +153,7 @@
           isPending: row.is_pending ?? false,
           reviewCount: row.review_count ?? 0,
           nextReviewAt: row.next_review_at ?? null,
+          isMemorized: row.is_memorized ?? false, // ← 追加：暗記済みフラグを読み込む
           incorrectCount: row.incorrect_count ?? 0, // ← 間違え回数を読み込む
         };
       }
