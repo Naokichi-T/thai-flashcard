@@ -134,7 +134,7 @@
       while (true) {
         const { data, error: status2Error } = await supabase
           .from("word_status")
-          .select("word_no, status, is_favorite, is_pending, review_count, next_review_at, incorrect_count")
+          .select("word_no, status, is_favorite, is_pending, review_count, next_review_at, is_memorized, incorrect_count")
           .eq("stage", 3)
           .range(status2From, status2From + statusBatchSize - 1);
 
