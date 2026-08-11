@@ -353,7 +353,7 @@
   const MEMORIZED_COUNT = 4;
 
   function getNextInterval(count) {
-    const base = [1, 4, 10, 21];
+    const base = [2, 6, 13, 25];
     let days;
     if (count <= base.length) {
       days = base[count - 1];
