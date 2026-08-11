@@ -350,10 +350,10 @@
   // 復習間隔の上限（日数）
   const MAX_INTERVAL_DAYS = 270; // 9か月
   // 何回連続正解で暗記済みにするか
-  const MEMORIZED_COUNT = 5;
+  const MEMORIZED_COUNT = 4;
 
   function getNextInterval(count) {
-    const base = [1, 4, 10, 21, 45];
+    const base = [1, 4, 10, 21];
     let days;
     if (count <= base.length) {
       days = base[count - 1];

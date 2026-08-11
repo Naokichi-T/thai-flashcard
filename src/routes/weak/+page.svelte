@@ -13,7 +13,7 @@
   let weakWords = $state([]); // 集計済みの苦手単語リスト
 
   // 絞り込みの閾値（この回数以上の単語だけ表示）
-  let minCount = $state(4);
+  let minCount = $state(5);
 
   // 絞り込みの選択肢
   const filterOptions = [1, 3, 5, 10];
