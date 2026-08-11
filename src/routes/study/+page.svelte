@@ -164,10 +164,10 @@
   const MAX_INTERVAL_DAYS = 365; // 1年
 
   // 何回連続正解で暗記済みにするか
-  const MEMORIZED_COUNT = 4;
+  const MEMORIZED_COUNT = 5;
 
   function getNextInterval(count) {
-    const base = [3, 9, 17, 30];
+    const base = [1, 4, 10, 21, 45];
     let days;
     if (count <= base.length) {
       days = base[count - 1];
