@@ -360,7 +360,7 @@
   const MEMORIZED_COUNT = 6;
 
   function getNextInterval(count) {
-    const base = [1, 4, 10, 21, 45, 75];
+    const base = [1, 4, 10, 21, 45, 70];
     let days;
     if (count <= base.length) {
       days = base[count - 1];
